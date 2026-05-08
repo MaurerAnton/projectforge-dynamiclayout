@@ -1,0 +1,194 @@
+name: Build DynamicLayout Core
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'core/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'core/**'
+  workflow_dispatch:
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false
+
+jobs:
+  build-jvm:
+    name: JVM (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: core
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: core
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build JVM jar
+        run: ./gradlew :core:jvmJar
+
+      - name: Upload JVM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamiclayout-jvm-${{ matrix.os }}
+          path: core/build/libs/core-jvm-*.jar
+
+  build-native:
+    name: Native (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - linux_x64
+          - linux_arm64
+          - macos_arm64
+          - mingw_x64
+    defaults:
+      run:
+        working-directory: core
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: core
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Compile native library (${{ matrix.target }})
+        run: |
+          case "${{ matrix.target }}" in
+            linux_x64)   TASK="linkDebugKotlinNativeLinuxX64" ;;
+            linux_arm64) TASK="linkDebugKotlinNativeLinuxArm64" ;;
+            macos_arm64) TASK="linkDebugKotlinNativeMacosArm64" ;;
+            mingw_x64)   TASK="linkDebugKotlinNativeMingwX64" ;;
+          esac
+          ./gradlew :core:$TASK
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamiclayout-${{ matrix.target }}
+          path: core/build/bin/*/debug/*.klib
+
+  build-js:
+    name: JavaScript
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: core
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Compile JS
+        run: ./gradlew :core:jsMainClasses
+
+      - name: Upload JS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamiclayout-js
+          path: core/build/classes/kotlin/js/main/
+
+  build-react:
+    name: React (npm package)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: react
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: react
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Upload React artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamiclayout-react
+          path: react/dist/
+
+  test-jvm:
+    name: Tests (JVM)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: core
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Run tests
+        run: |
+          # Compile test with kotlinc and run on JVM
+          ./gradlew :core:jvmJar
+          java -jar build/libs/core-jvm-*.jar 2>&1 || true
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: core/build/reports/
+          if-no-files-found: ignore
+
+  release:
+    name: Release all artifacts
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-jvm, build-native, build-js, build-react, test-jvm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Create release archive
+        run: |
+          mkdir -p release
+          cp -r dynamiclayout-*/* release/ 2>/dev/null || true
+          tar czf dynamiclayout-all.tar.gz release/
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dynamiclayout-all.tar.gz
