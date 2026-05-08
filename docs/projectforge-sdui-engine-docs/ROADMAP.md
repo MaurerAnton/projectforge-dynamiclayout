@@ -3,58 +3,58 @@
 ## Status Key
 
 - ✅ Done
-- 🟢 Planned — high priority
-- 🟡 Planned — medium priority
-- 🔵 Planned — long term
+- 🟢 Next — high priority
+- 🟡 Medium — medium priority
+- 🔵 Long — long term
 
 ---
 
 ## ✅ 1. GitHub Actions CI
 
-**Status: Done.** CI builds JVM, JavaScript, Native (linuxX64), and React package on every push.
+**Status: Done.** CI builds JVM, JavaScript, Native (linuxX64, linuxArm64), and React package on every push.
 
-- [`.github/workflows/build.yml`](.github/workflows/build.yml) — 5 jobs: JVM, Native (linuxX64), JS, Tests, React
-- Native ARM64 (linuxArm64) not yet enabled in CI (requires prebuilt kotlin-native for linux-aarch64)
+- [`.github/workflows/build.yml`](.github/workflows/build.yml) — 6 jobs: JVM, Native (linuxX64), Native (linuxArm64), JS, Tests, React
+- All builds pass on `ubuntu-latest`
+- Native ARM64 compiled via cross-compilation from x86_64 runner
 
 ---
 
-## ✅ 2. npm Package (React)
+## ✅ 2. React npm Package
 
-**Status: Done.** `@dynamiclayout/react` package structure is ready in `react/`:
-- 21 JSX components
-- Vite build config
-- package.json with peer dependencies
+**Status: Done.** `@dynamiclayout/react` package structure ready in `react/`:
+- 21 JSX components (DynamicLayout, DynamicGroup, DynamicFieldset, DynamicInput, etc.)
+- Vite build config for library mode
+- package.json with peer dependencies (React 18, reactstrap)
+- Builds successfully: `npm install && npm run build` → `dist/`
 
-**Next step:** publish to npm registry.
+**Next:** publish to npm registry.
 
 ---
 
 ## ✅ 3. JSON Schema
 
-**Status: Done.** [`dynamiclayout-schema.json`](dynamiclayout-schema.json) — Draft 2020-12 JSON Schema for the layout format.
-
-Includes:
-- Type definitions for all 33 UIElementType values
+**Status: Done.** [`dynamiclayout-schema.json`](dynamiclayout-schema.json) — Draft 2020-12 JSON Schema for the layout format:
+- 33 UIElementType definitions
 - Validation rules for containers, inputs, buttons, tables
-- Example layout included
+- Example layout (`examples/about-layout.json`)
 
 ---
 
 ## ✅ 4. React.memo Optimization
 
-**Status: Done.** Applied to:
-- `DynamicGroup.jsx` — structural content comparison
+**Status: Done.** Applied to container components:
+- `DynamicGroup.jsx` — structural content comparison (type + key)
 - `DynamicFieldset.jsx` — structural content comparison
 - `DynamicInlineGroup.jsx` — structural content comparison
-- `DynamicLayout/index.jsx` — context value stabilization
+- `DynamicLayout/index.jsx` — context value stabilization with `useMemo`
 
 ---
 
 ## ✅ 5. Demo Project
 
-**Status: Done.** [`dynamiclayout-demo/`](../dynamiclayout-demo/) — runnable demo:
-- Node.js server returning layout JSON (`server-node/`)
-- Vite + React client with DynamicLayout import
+**Status: Done.** [`dynamiclayout-demo/`](../dynamiclayout-demo/):
+- Node.js server returning layout JSON for About and Registration Form pages
+- Vite + React client importing DynamicLayout from local source
 - One-command startup: `./run-demo.sh`
 
 ---
@@ -62,126 +62,130 @@ Includes:
 ## ✅ 6. Engine Extraction
 
 **Status: Done.** Core module extracted to `core/`:
-- `commonMain/` — 52 Kotlin files, platform-independent UI DSL
-- `jvmMain/` — JVM platform (System.currentTimeMillis)
-- `nativeMain/` — Native platform (gettimeofday)
-- `jsMain/` — JS platform (Date.now)
-- `spring/` — Spring Boot auto-configuration (optional)
+- `commonMain/` — 52 Kotlin files, pure KMP (JVM + Native + JS)
+- `jvmMain/` — `System.currentTimeMillis()`
+- `nativeMain/` — `gettimeofday()`
+- `jsMain/` — `Date.now()`
 - Build: Gradle KMP + Makefile + build.sh
 
 ---
 
-## 🟢 7. Publish npm Package
+## ✅ 7. linuxArm64 Native Build
 
-Publish `@dynamiclayout/react` to npm registry.
+**Status: Done.** Cross-compilation from x86_64 CI runner:
+- Task: `./gradlew linuxArm64MainKlibrary`
+- Artifact: `dynamiclayout-linuxArm64` (175 KB .klib)
+- Note: requires x86_64 host (kotlin-native prebuilt not available for ARM64 Linux)
+
+---
+
+## ✅ 8. Makefile + build.sh
+
+**Status: Done.** Gradle-free native build on x86_64:
+- `make native` / `./build.sh native` — .klib via kotlinc-native
+- `make app` — native executable + run
+- `make test` — 11 integration tests
+- Falls back gracefully on ARM64 with Gradle instructions
+
+---
+
+## 🟢 9. Publish npm Package
+
+**Status: Next step.** Publish `@dynamiclayout/react` to npm registry.
 
 | Aspect | Detail |
 |--------|--------|
-| Impact | Usability — anyone can `npm install` |
+| Impact | Anyone can `npm install @dynamiclayout/react` |
 | Complexity | Low |
-| Prerequisites | GitHub Actions, npm token |
-
----
-
-## ✅ 8. Enable linuxArm64 in CI
-
-**Status: Done.** `linuxArm64` target compiles successfully on x86_64 CI runner via cross-compilation.
-
-- Task: `./gradlew linuxArm64MainKlibrary`
-- Artifact: `dynamiclayout-linuxArm64` (175 KB .klib)
-- Works on standard `ubuntu-latest` runner
-
----
-
-## ✅ 9. Native Build via Makefile
-
-**Status: Done.** `core/Makefile` + `core/build.sh` supports:
-- `make native` / `build.sh native` — compile .klib (x86_64 only, needs kotlinc-native)
-- `make jvm` / `build.sh jvm` — compile JVM .jar (any arch, needs kotlinc)
-- `make app` / `build.sh app` — compile + run native executable
-- `make test` — compile and run 11 tests
-- Falls back gracefully on ARM64 with message to use Gradle
+| What's needed | npm account, `npm publish` |
 
 ---
 
 ## 🟡 10. Cache Read-Only Layouts
 
-Add `@Cacheable` to `AboutPageRest.kt` (already has the annotation).
-Requires Spring Cache configuration to be enabled.
+**Status: Planned.** Add Spring Cache config to enable `@Cacheable` on `AboutPageRest.kt`.
 
 | Aspect | Detail |
 |--------|--------|
 | Impact | Reduces server load for static pages |
 | Complexity | Low |
-| Prerequisites | Spring Boot Cache |
+| What's needed | `@EnableCaching` in ProjectForge config |
 
 ---
 
 ## 🟡 11. Templates (define/use)
 
-Reduce JSON size by allowing reusable layout templates, similar to DivKit.
-Design: `layout.define("card") { ... }` / `layout.use("card")`.
+**Status: Planned.** Reduce JSON size by allowing reusable layout definitions.
+
+```kotlin
+layout.define("address") { /* UIRow, UICol, UIInput... */ }
+layout.use("address")
+layout.use("address")
+```
 
 | Aspect | Detail |
 |--------|--------|
 | Impact | 2-3x smaller JSON for repeated structures |
 | Complexity | High |
-| Prerequisites | Core DSL changes |
+| What's needed | Core DSL changes + Custom serializer |
 
 ---
 
 ## 🟡 12. Field-Level Reactivity
 
-Replace full DynamicLayout re-render with field-level context updates.
-Currently each `setData` re-renders the entire page. Target: only re-render changed fields.
+**Status: Planned.** Replace full DynamicLayout re-render with field-level context.
+Currently each `setData()` re-renders all 150+ elements. Target: only re-render changed field.
 
 | Aspect | Detail |
 |--------|--------|
 | Impact | Smooth 150+ field forms |
 | Complexity | Medium |
-| Prerequisites | React.memo (done) + context split |
+| What's needed | React.memo (done) + context splitting |
 
 ---
 
 ## 🔵 13. kotlinx.serialisation
 
-Replace Gson with kotlinx.serialisation for type-safe serialization.
-Removes UISelectTypeSerializer, Jackson annotations, and reflective Gson.
+**Status: Planned.** Replace Gson with kotlinx.serialisation:
+- Type-safe serialization
+- No reflective Gson
+- Multiplatform support
+- Eliminates UISelectTypeSerializer
 
 | Aspect | Detail |
 |--------|--------|
 | Impact | Type-safe, multiplatform, 2-3x faster |
 | Complexity | High |
-| Prerequisites | Gradle KMP setup (done) |
+| What's needed | Gradle KMP (done) + migration |
 
 ---
 
 ## 🔵 14. Variables + Expressions
 
-Add expression language support (like DivKit's `@{var + 1}`).
-Allows server-side logic without round-trips.
+**Status: Planned.** Expression language similar to DivKit's `@{var + 1}`.
+Allows server-side to describe dynamic behavior without round-tripping to server.
 
 | Aspect | Detail |
 |--------|--------|
 | Impact | Fewer server round-trips, richer dynamic UI |
 | Complexity | High |
-| Prerequisites | Core DSL + React renderer changes |
+| What's needed | Core DSL + React renderer changes |
 
 ---
 
-## Summary
+## Complete Summary
 
 | # | Task | Status | Priority | Complexity |
 |:--|------|--------|:--------:|:----------:|
 | 1 | GitHub Actions CI | ✅ Done | — | Low |
-| 2 | npm package | ✅ Done | — | Low |
+| 2 | React npm package | ✅ Done | — | Low |
 | 3 | JSON Schema | ✅ Done | — | Medium |
 | 4 | React.memo | ✅ Done | — | Low |
 | 5 | Demo project | ✅ Done | — | Medium |
 | 6 | Engine extraction | ✅ Done | — | High |
-| 7 | Publish npm package | 🟢 Next | High | Low |
-| 8 | linuxArm64 CI | ✅ Done | — | Medium |
-| 9 | Native Makefile | ✅ Done | — | Low |
+| 7 | linuxArm64 CI | ✅ Done | — | Medium |
+| 8 | Makefile build | ✅ Done | — | Low |
+| 9 | Publish npm package | 🟢 Next | High | Low |
 | 10 | Cache layouts | 🟡 Medium | Medium | Low |
 | 11 | Templates | 🟡 Medium | Medium | High |
 | 12 | Field-level reactivity | 🟡 Medium | High | Medium |
