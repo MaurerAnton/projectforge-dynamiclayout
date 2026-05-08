@@ -85,8 +85,11 @@ jobs:
           java -Dorg.dynamiclayout.test=1 -jar build/libs/core-jvm-*.jar 2>&1 || true
 
   build-native:
-    name: Native (linuxX64)
+    name: Native (${{ matrix.target }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [linuxX64, linuxArm64]
     defaults:
       run:
         working-directory: core
@@ -100,14 +103,16 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Compile native library
-        run: ./gradlew linuxX64MainKlibrary
+      - name: Compile native library (${{ matrix.target }})
+        run: ./gradlew ${matrix.target}MainKlibrary
 
       - name: Upload native artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dynamiclayout-linux-x64
-          path: core/build/bin/*/debug/*.klib
+          name: dynamiclayout-${{ matrix.target }}
+          path: |
+            core/build/classes/kotlin/${{ matrix.target }}/main/*.klib
+            core/build/bin/${{ matrix.target }}/debug/*.klib
 
   react:
     name: React
