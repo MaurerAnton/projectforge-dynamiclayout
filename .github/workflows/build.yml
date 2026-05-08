@@ -29,7 +29,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Build JVM jar
-        run: ./gradlew :core:jvmJar
+        run: ./gradlew jvmJar
 
       - name: Upload JVM artifact
         uses: actions/upload-artifact@v4
@@ -64,7 +64,7 @@ jobs:
             linux_x64)   TASK="linkDebugKotlinNativeLinuxX64" ;;
             linux_arm64) TASK="linkDebugKotlinNativeLinuxArm64" ;;
           esac
-          ./gradlew :core:$TASK
+          ./gradlew $TASK
 
       - name: Upload native artifact
         uses: actions/upload-artifact@v4
@@ -89,7 +89,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Compile JS
-        run: ./gradlew :core:jsMainClasses
+        run: ./gradlew jsMainClasses
 
       - name: Upload JS artifact
         uses: actions/upload-artifact@v4
@@ -116,7 +116,7 @@ jobs:
       - name: Run JVM tests
         run: |
           chmod +x gradlew
-          ./gradlew :core:jvmJar
+          ./gradlew jvmJar
           java -Dorg.dynamiclayout.test=1 -jar build/libs/core-jvm-*.jar 2>&1 || true
 
   react:
