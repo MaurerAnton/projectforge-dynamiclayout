@@ -10,7 +10,12 @@ fun interface I18nProvider {
 }
 
 fun I18nProvider.translateMsg(key: String, vararg args: Any?): String {
-    return translate(key).format(args)
+    val template = translate(key)
+    var result = template
+    args.forEachIndexed { index, arg ->
+        result = result.replace("{$index}", arg?.toString() ?: "")
+    }
+    return result
 }
 
 fun I18nProvider.addTranslations(target: MutableMap<String, String>, vararg keys: String) {
