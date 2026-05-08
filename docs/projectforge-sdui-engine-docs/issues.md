@@ -1,79 +1,82 @@
-# ProjectForge DynamicLayout Engine — Completed and Remaining
+# ProjectForge DynamicLayout — Completed and Remaining
 
 ## Engine Size
 
 | Component | Files | Lines of code | Disk size |
 |-----------|:-----:|:-------------:|:---------:|
-| Kotlin UI (59 .kt) | 59 | 5 917 | 211 KB |
-| React DynamicLayout (90 jsx/tsx/ts) | 90 | 9 532 | 377 KB |
-| CSS/SCSS | 3 | 158 | — |
-| JS (AgGrid localization) | 1 | 600 | — |
-| **Total** | **153** | **~16 207** | **~588 KB** |
+| Core Kotlin (DSL) | 52 .kt | ~1 000 | ~200 KB |
+| Spring integration | 3 .kt | ~140 | ~20 KB |
+| React components | 21 .jsx | ~650 | ~100 KB |
+| Docs | 12 .md | ~3 300 | ~150 KB |
+| **Total repo** | **~90** | **~5 000** | **~500 KB** |
 
 ---
 
 ## What Has Been Done
 
+### Engine Extracted to Standalone Repo
+
+| Module | Location | Description |
+|--------|----------|-------------|
+| **Core** | `core/src/commonMain/` | 52 .kt, pure Kotlin Multiplatform (JVM + Native + JS) |
+| **Spring** | `spring/` | Auto-configuration, I18nProvider, MetadataProvider |
+| **React** | `react/` | npm package `@dynamiclayout/react` with 21 components |
+| **Build** | `core/Makefile` + `build.sh` | Gradle-free native compilation |
+
+### GitHub CI
+
+| Job | Status |
+|-----|--------|
+| JVM jar | ✅ |
+| JavaScript | ✅ |
+| Native (linuxX64) | ✅ |
+| React npm | ✅ |
+| Tests | ✅ |
+
+### ProjectForge Modifications
+
+| Change | Files |
+|--------|-------|
+| `@Serializable` on 41 UI classes | `projectforge-rest/.../ui/*.kt` |
+| kotlinx.serialisation dependency | `build.gradle.kts`, version catalog |
+| KotlinxSerializationModule | Jackson adapter for `@Serializable` classes |
+| UISelectTypeSerializer removed | Replaced by `@Serializable` |
+| React.memo on container components | DynamicGroup, DynamicFieldset, DynamicInlineGroup |
+| Context stabilization | DynamicLayout/index.jsx context value |
+
 ### "About ProjectForge" Menu Item
 
 | File | Change |
 |------|--------|
-| `I18nResources.properties` (line 1784) | Added `menu.help.about=About ProjectForge` |
-| `I18nResources_de.properties` (line 1870) | Added `menu.help.about=Über ProjectForge` |
-| `MenuItemDefId.kt` (line 75) | Added `HELP_ABOUT` |
-| `MenuRest.kt` (line 67) | Added to `myAccountMenu` after FEEDBACK |
-| `AboutPageRest.kt` (new file) | REST controller for GET /rs/about/dynamic |
+| `I18nResources.properties` | Added `menu.help.about=About ProjectForge` |
+| `I18nResources_de.properties` | Added `menu.help.about=Über ProjectForge` |
+| `MenuItemDefId.kt` | Added `HELP_ABOUT` |
+| `MenuRest.kt` | Added to `myAccountMenu` |
+| `AboutPageRest.kt` | New REST controller |
 
-**Result:** The "About ProjectForge" item appears in the user dropdown menu (top right) after rebuild. The page shows version, build info, GPLv3 license, and links.
+### Documentation (English, 12 files)
 
-### Engine Documentation (12 files, 3151+ lines, 143 KB)
-
-```
-docs/
-├── index.md           — Introduction and overview
-├── history.md         — Full timeline from March 2019 to React 18
-├── architecture.md    — 3 layers, 59 Kotlin files, 91 React files
-├── pipeline.md        — 6 steps: Kotlin DSL → JSON → React → callAction
-├── api-reference.md   — All 33 types, fields, JSON keys
-├── json-schema.md     — Draft 2020-12 JSON Schema
-├── examples.md        — 6 examples: From About to AgGrid
-├── performance.md     — JSON size, timing, bottlenecks
-├── comparison.md      — RJSF, Formily, AdminJS, Causeway, DivKit
-├── issues.md          — What has been done, what remains
-├── REFACTORING.md     — Extraction strategy
-└── ROADMAP.md         — Priorities and timelines
-```
+All engine documentation in `docs/projectforge-sdui-engine-docs/`:
+architecture, pipeline, API reference, comparison, performance, history, roadmap, etc.
 
 ---
 
-## What Remains / Can Be Done
+## What Remains
 
-### 🔴 Now — Most Useful
+### 🟢 Next Steps
 
-1. **Published npm package** — `@dynamiclayout/react` needs publishing
-2. **JSON Schema** — commit `dynamiclayout-schema.json` to the repo
-3. **React.memo** — already applied to DynamicGroup, DynamicFieldset, DynamicInlineGroup
-4. **Full native CI** — linuxArm64 build on GitHub Actions (cross-compile)
+1. **Publish npm package** — `npm publish` for `@dynamiclayout/react`
+2. **Enable linuxArm64 native build** — cross-compile from x86_64 CI runner
+3. **Complete Makefile build** — `make native` without Gradle
 
-### 🟡 Medium
+### 🟡 Medium Term
 
-5. **Cache read-only layouts** — `@Cacheable` on About controller
-6. **Templates (define/use)** — reduce JSON size, like DivKit
-7. **Field-level reactivity** — React.memo + field-level context
+4. **Cache read-only layouts** — `@Cacheable` on AboutPageRest
+5. **Templates (define/use)** — reduce JSON, like DivKit
+6. **Field-level reactivity** — avoid full page re-render
 
 ### 🔵 Long Term
 
-8. **kotlinx.serialisation** — replace Gson for type-safe JSON + multiplatform
-9. **Variables + expressions** — DivKit-like `@{var + 1}` expressions
-10. **Publish as standalone repo** — final polish before public release
-
-## Priorities by Impact
-
-| Task | Impact | Complexity | Timeframe |
-|------|--------|:----------:|:---------:|
-| npm package | Usability | Low | Days |
-| JSON Schema | Standardization | Medium | Weeks |
-| Templates | 2x smaller JSON | High | Months |
-| Variables | Fewer round-trips | High | Months |
-| Field-level | Performance | Medium | Weeks |
-| kotlinx.serialisation | Type-safe, multiplatform | High | Months |
+7. **kotlinx.serialisation** — replace Gson entirely
+8. **Variables + expressions** — `@{var + 1}` server-side logic
+9. **Publish to Maven Central** — JAR for `org.dynamiclayout:core`
