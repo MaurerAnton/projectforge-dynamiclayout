@@ -93,10 +93,14 @@ Publish `@dynamiclayout/react` to npm registry.
 
 ---
 
-## 🟢 9. Native Build via Makefile
+## ✅ 9. Native Build via Makefile
 
-Complete `core/Makefile` + `core/build.sh` for Gradle-free native compilation.
-Currently works on x86_64 with `kotlinc-native`.
+**Status: Done.** `core/Makefile` + `core/build.sh` supports:
+- `make native` / `build.sh native` — compile .klib (x86_64 only, needs kotlinc-native)
+- `make jvm` / `build.sh jvm` — compile JVM .jar (any arch, needs kotlinc)
+- `make app` / `build.sh app` — compile + run native executable
+- `make test` — compile and run 11 tests
+- Falls back gracefully on ARM64 with message to use Gradle
 
 ---
 
@@ -177,7 +181,7 @@ Allows server-side logic without round-trips.
 | 6 | Engine extraction | ✅ Done | — | High |
 | 7 | Publish npm package | 🟢 Next | High | Low |
 | 8 | linuxArm64 CI | ✅ Done | — | Medium |
-| 9 | Native Makefile | 🟢 Next | Low | Low |
+| 9 | Native Makefile | ✅ Done | — | Low |
 | 10 | Cache layouts | 🟡 Medium | Medium | Low |
 | 11 | Templates | 🟡 Medium | Medium | High |
 | 12 | Field-level reactivity | 🟡 Medium | High | Medium |
