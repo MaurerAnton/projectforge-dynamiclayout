@@ -3,8 +3,6 @@ name: Build DynamicLayout Core
 on:
   push:
     branches: [main, master, develop]
-    paths:
-      - 'core/**'
   workflow_dispatch:
 
 env:
@@ -16,15 +14,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
     defaults:
       run:
         working-directory: core
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: core
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -38,7 +34,7 @@ jobs:
       - name: Upload JVM artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dynamiclayout-jvm-${{ matrix.os }}
+          name: dynamiclayout-jvm
           path: core/build/libs/core-jvm-*.jar
 
   build-native:
@@ -49,16 +45,12 @@ jobs:
         target:
           - linux_x64
           - linux_arm64
-          - macos_arm64
-          - mingw_x64
     defaults:
       run:
         working-directory: core
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: core
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -71,8 +63,6 @@ jobs:
           case "${{ matrix.target }}" in
             linux_x64)   TASK="linkDebugKotlinNativeLinuxX64" ;;
             linux_arm64) TASK="linkDebugKotlinNativeLinuxArm64" ;;
-            macos_arm64) TASK="linkDebugKotlinNativeMacosArm64" ;;
-            mingw_x64)   TASK="linkDebugKotlinNativeMingwX64" ;;
           esac
           ./gradlew :core:$TASK
 
@@ -91,8 +81,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: core
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -109,8 +97,30 @@ jobs:
           name: dynamiclayout-js
           path: core/build/classes/kotlin/js/main/
 
-  build-react:
-    name: React (npm package)
+  test-jvm:
+    name: Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Run JVM tests
+        run: |
+          chmod +x gradlew
+          ./gradlew :core:jvmJar
+          java -Dorg.dynamiclayout.test=1 -jar build/libs/core-jvm-*.jar 2>&1 || true
+
+  react:
+    name: React
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -118,8 +128,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: react
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -137,53 +145,3 @@ jobs:
         with:
           name: dynamiclayout-react
           path: react/dist/
-
-  test-jvm:
-    name: Tests (JVM)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: core
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: core
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Run tests
-        run: |
-          # Compile test with kotlinc and run on JVM
-          ./gradlew :core:jvmJar
-          java -jar build/libs/core-jvm-*.jar 2>&1 || true
-
-      - name: Upload test report
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-report
-          path: core/build/reports/
-          if-no-files-found: ignore
-
-  release:
-    name: Release all artifacts
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-jvm, build-native, build-js, build-react, test-jvm]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-
-      - name: Create release archive
-        run: |
-          mkdir -p release
-          cp -r dynamiclayout-*/* release/ 2>/dev/null || true
-          tar czf dynamiclayout-all.tar.gz release/
-
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dynamiclayout-all.tar.gz
