@@ -230,3 +230,4 @@ const json = { /* paste any example JSON here */ };
 | [core/tests/src/Tests.kt](core/tests/src/Tests.kt) | 11 tests as a starting point |
 | [dynamiclayout-schema.json](dynamiclayout-schema.json) | JSON Schema |
 | [docs/](docs/) | Full engine documentation |
+| [ROADMAP](docs/projectforge-sdui-engine-docs/ROADMAP.md) | Planned features and priorities |
