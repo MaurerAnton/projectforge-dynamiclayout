@@ -524,6 +524,93 @@ const CPP_SOURCES = {
   'registration-form.json': CPP_REGISTRATION,
 };
 
+// === JS source for each preset ===
+const JS_ABOUT = `const ui = {
+  title: 'About',
+  uid: 'layout_js',
+  layout: [
+    { type: 'FIELDSET', key: 'fs1', title: 'Info',
+      content: [
+        { type: 'LABEL', key: 'l1', label: 'DynamicLayout Engine v0.1.0' },
+        { type: 'LABEL', key: 'l2', label: 'Server-Driven UI for Kotlin + React' },
+      ]
+    }
+  ],
+  translations: {},
+  userAccess: { cancel: true }
+};
+
+// Send to React: <DynamicLayout ui={ui} />
+// Or serialize: JSON.stringify({ ui })`;
+
+const JS_FORM = `const ui = {
+  title: 'Feedback',
+  uid: 'layout_js',
+  layout: [
+    { type: 'FIELDSET', key: 'fs1', title: 'Your Details',
+      content: [
+        { type: 'ROW', key: 'r1', content: [
+          { type: 'COL', key: 'c1', length: { xs: 12, md: 6 },
+            content: [{ type: 'INPUT', key: 'i1', id: 'name', label: 'Name', required: true }] },
+          { type: 'COL', key: 'c2', length: { xs: 12, md: 6 },
+            content: [{ type: 'INPUT', key: 'i2', id: 'email', label: 'Email', required: true }] },
+        ]},
+        { type: 'INPUT', key: 'i3', id: 'subject', label: 'Subject' },
+        { type: 'TEXTAREA', key: 't1', id: 'message', label: 'Message', rows: 5 },
+      ]
+    }
+  ],
+  actions: [
+    { type: 'BUTTON', key: 'b1', id: 'send', title: 'Send', color: 'primary' },
+    { type: 'BUTTON', key: 'b2', id: 'cancel', title: 'Cancel', color: 'secondary' },
+  ],
+  translations: {},
+  userAccess: { cancel: true }
+};`;
+
+const JS_REGISTRATION = `const ui = {
+  title: 'Registration',
+  uid: 'layout_js',
+  layout: [
+    { type: 'ROW', key: 'r1', content: [
+      { type: 'COL', key: 'c1', length: { xs: 12, md: 6 },
+        content: [{ type: 'FIELDSET', key: 'fs1', title: 'Personal Info', content: [
+          { type: 'INPUT', key: 'i1', id: 'firstName', label: 'First Name', required: true },
+          { type: 'INPUT', key: 'i2', id: 'lastName', label: 'Last Name', required: true },
+          { type: 'INPUT', key: 'i3', id: 'email', label: 'Email', required: true },
+        ]}] },
+      { type: 'COL', key: 'c2', length: { xs: 12, md: 6 },
+        content: [{ type: 'FIELDSET', key: 'fs2', title: 'Details', content: [
+          { type: 'INPUT', key: 'i4', id: 'phone', label: 'Phone' },
+          { type: 'SELECT', key: 's1', id: 'country', label: 'Country',
+            values: [
+              { id: 'us', displayName: 'USA' },
+              { id: 'de', displayName: 'Germany' },
+          ]},
+          { type: 'CHECKBOX', key: 'c3', id: 'agree', label: 'I agree' },
+        ]}] },
+    ]},
+    { type: 'FIELDSET', key: 'fs3', title: 'Additional Info', collapsed: true,
+      content: [
+        { type: 'TEXTAREA', key: 't1', id: 'notes', label: 'Notes', rows: 3 },
+    ]},
+  ],
+  actions: [
+    { type: 'BUTTON', key: 'b1', id: 'register', title: 'Register', color: 'primary' },
+    { type: 'BUTTON', key: 'b2', id: 'cancel', title: 'Cancel', color: 'secondary' },
+  ],
+  translations: {},
+  userAccess: { cancel: true }
+};
+
+// <DynamicLayout ui={ui} data={data} setData={setData} />`;
+
+const JS_SOURCES = {
+  'about-layout.json': JS_ABOUT,
+  'feedback-form.json': JS_FORM,
+  'registration-form.json': JS_REGISTRATION,
+};
+
 // === Playground App ===
 
 function Playground() {
@@ -531,7 +618,7 @@ function Playground() {
   const [data, setData] = useState({});
   const [error, setError] = useState(null);
   const [selectedPreset, setSelectedPreset] = useState('about-layout.json');
-  const [mode, setMode] = useState('json'); // 'json' or 'kotlin' or 'cpp'
+  const [mode, setMode] = useState('json'); // 'json' or 'kotlin' or 'cpp' or 'js'
 
   const parsed = useMemo(() => {
     try {
@@ -570,9 +657,9 @@ function Playground() {
       const kotlin = KOTLIN_SOURCES[selectedPreset] || '// No Kotlin source available';
   const cpp = CPP_SOURCES[selectedPreset] || '// No C++ source available yet';
 
-  const editorValue = mode === 'json' ? json : mode === 'kotlin' ? kotlin : cpp;
+  const editorValue = mode === 'json' ? json : mode === 'kotlin' ? kotlin : mode === 'cpp' ? cpp : (JS_SOURCES[selectedPreset] || '// No JS source');
   const isReadOnly = false;
-  const statusText = mode === 'json' ? `${chars} chars` : mode === 'kotlin' ? 'Kotlin DSL — editable (copy to your project)' : 'C++ (dynamiclayout.h) — editable (copy to your project)';
+  const statusText = mode === 'json' ? `${chars} chars` : mode === 'kotlin' ? 'Kotlin DSL — editable' : mode === 'cpp' ? 'C (dynamiclayout.h) — editable' : 'JavaScript — editable';
 
   return React.createElement('div', { className: 'playground' },
     React.createElement('div', { className: 'pane editor-pane' },
@@ -591,6 +678,11 @@ function Playground() {
           onClick: () => setMode('cpp'),
           style: { fontWeight: mode === 'cpp' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 14, color: mode === 'cpp' ? '#0d6efd' : '#6c757d' }
         }, '⚙️ C++'),
+        React.createElement('span', null, ' / '),
+        React.createElement('button', {
+          onClick: () => setMode('js'),
+          style: { fontWeight: mode === 'js' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 14, color: mode === 'js' ? '#0d6efd' : '#6c757d' }
+        }, '🟨 JS'),
         React.createElement('select', { value: selectedPreset, onChange: e => loadPreset(e.target.value), style: { marginLeft: 'auto', fontSize: 13, padding: '2px 4px' } },
           React.createElement('option', { value: 'about-layout.json' }, 'About Page'),
           React.createElement('option', { value: 'feedback-form.json' }, 'Feedback Form'),
