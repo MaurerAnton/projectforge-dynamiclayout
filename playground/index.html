@@ -704,26 +704,21 @@ function Playground() {
     setData({});
     const jsExample = JS_SOURCES[name] || JS_ABOUT;
     setJsCode(jsExample);
-    // Helper to set json and originalJson consistently
-    const setPresetJson = (text) => {
-      setJson(text);
-      setOriginalJson(text);
-    };
     try {
       if (PRESETS[name]) {
         const resp = await fetch(PRESETS[name].url);
         if (resp.ok) {
           const text = await resp.text();
-          setPresetJson(text);
+          setJson(text);
           return;
         }
       }
       const examples = { 'about-layout.json': EXAMPLE_ABOUT, 'feedback-form.json': EXAMPLE_FORM, 'registration-form.json': EXAMPLE_REGISTRATION };
       const ex = examples[name] || EXAMPLE_ABOUT;
-      setPresetJson(JSON.stringify(ex, null, 2));
+      setJson(JSON.stringify(ex, null, 2));
     } catch (e) {
       const examples = { 'about-layout.json': EXAMPLE_ABOUT, 'feedback-form.json': EXAMPLE_FORM, 'registration-form.json': EXAMPLE_REGISTRATION };
-      setPresetJson(JSON.stringify(examples[name] || EXAMPLE_ABOUT, null, 2));
+      setJson(JSON.stringify(examples[name] || EXAMPLE_ABOUT, null, 2));
     }
   }, []);
 
@@ -734,8 +729,31 @@ function Playground() {
 
   const [jsCode, setJsCode] = useState(JS_ABOUT);
   const [jsError, setJsError] = useState(null);
-  const [originalJson, setOriginalJson] = useState(JSON.stringify(EXAMPLE_ABOUT, null, 2));
-  const isModified = json !== originalJson;
+
+  // Deep structural comparison (ignores key values, uid, etc.)
+  const isModified = (() => {
+    try {
+      const current = JSON.parse(json);
+      const examples = {
+        'about-layout.json': EXAMPLE_ABOUT,
+        'feedback-form.json': EXAMPLE_FORM,
+        'registration-form.json': EXAMPLE_REGISTRATION,
+      };
+      const preset = examples[selectedPreset] || EXAMPLE_ABOUT;
+      // Compare title and number of fieldsets/labels
+      const curTitle = current?.ui?.title;
+      const preTitle = preset?.ui?.title;
+      if (curTitle !== preTitle) return true;
+      const curLayout = current?.ui?.layout || [];
+      const preLayout = preset?.ui?.layout || [];
+      // Compare layout structure (type and content only)
+      const stripKeys = (arr) => JSON.stringify(arr, (k, v) =>
+        ['key','uid'].includes(k) ? undefined : v);
+      return stripKeys(curLayout) !== stripKeys(preLayout);
+    } catch (e) {
+      return true;
+    }
+  })();
 
   // Eval JS code and update json
   const evalJs = useCallback((code) => {
@@ -744,12 +762,10 @@ function Playground() {
       if (typeof result === 'string') {
         JSON.parse(result);
         setJson(result);
-        setOriginalJson(result);
         setJsError(null);
       } else if (result && typeof result === 'object') {
         const text = JSON.stringify(result, null, 2);
         setJson(text);
-        setOriginalJson(text);
         setJsError(null);
       }
     } catch (e) {
@@ -768,11 +784,9 @@ function Playground() {
         if (typeof result === 'string') {
           JSON.parse(result);
           setJson(result);
-          setOriginalJson(result);
         } else if (result && typeof result === 'object') {
           const text = JSON.stringify(result, null, 2);
           setJson(text);
-          setOriginalJson(text);
         }
         setJsError(null);
       } catch (e) {
@@ -788,7 +802,6 @@ function Playground() {
       const ex = examples[selectedPreset] || EXAMPLE_ABOUT;
       const text = JSON.stringify(ex, null, 2);
       setJson(text);
-      setOriginalJson(text);
       setData({});
     }
   }, [jsCode, selectedPreset]);
