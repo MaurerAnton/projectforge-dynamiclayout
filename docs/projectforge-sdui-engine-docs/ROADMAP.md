@@ -256,6 +256,48 @@ Allows server-side to describe dynamic behavior without round-tripping to server
 
 ---
 
+## ✅ 17. C/C++ Header — Generate Layout JSON from C
+
+**Status: Done.**`dynamiclayout.h` — single-header C library for generating DynamicLayout JSON from C/C++ code.
+
+### What it provides
+- **`DL_Builder`** — stateful JSON builder
+- **`dl_begin()` / `dl_end()`** — start/finish layout
+- **`dl_fieldset()`** — add FIELDSET with variadic children
+- **`dl_about()`** — quick helper for static sections
+- Handles JSON escaping, indentation, comma placement
+
+### C example
+```c
+DL_Builder b = dl_begin(json, 4096, "My Page");
+dl_about(&b, "Info", "Hello from C!");
+dl_about(&b, "License", "GPLv3");
+dl_end(&b);
+// json now contains valid DynamicLayout JSON
+```
+
+### Example output
+```json
+{
+  "ui": { "title": "My Page", "layout": [
+    { "type": "FIELDSET", ... },
+    { "type": "FIELDSET", ... }
+  ]}
+}
+```
+
+### How to use
+```bash
+gcc -o myapp myapp.c -I/path/to/dynamiclayout
+```
+
+### Next steps
+- Full C++ wrapper with RAII and type-safe builders
+- Support for all 33 UIElementType values
+- Automated tests comparing C and Kotlin output
+
+---
+
 ## Complete Summary
 
 | # | Task | Status | Priority | Complexity |
@@ -276,3 +318,4 @@ Allows server-side to describe dynamic behavior without round-tripping to server
 | 14 | Variables + expressions | 🔵 Long | Low | High |
 | 15 | Interactive playground | ✅ Done | — | Low |
 | 16 | Kotlin editor in playground | 🟢 Next | High | Medium |
+| 17 | C/C++ generation | ✅ Done | — | Medium |
