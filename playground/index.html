@@ -276,6 +276,99 @@ registerComponent('READONLY_FIELD', DynamicReadonlyField);
 registerComponent('PROGRESS', DynamicProgress);
 registerComponent('LIST', DynamicList);
 
+// === DynamicLayout JS DSL — real-time executable from playground ===
+// Mirrors the Kotlin API: UILayout, UIRow, UIInput, etc.
+// Returns a plain object that DynamicRenderer can consume.
+class JsLayout {
+  constructor(title) {
+    this.title = title;
+    this.layout = [];
+    this.actions = [];
+    this._stack = [this.layout];
+  }
+  get _current() { return this._stack[this._stack.length - 1]; }
+  _push(arr) { this._stack.push(arr); return this; }
+  _pop() { this._stack.pop(); return this; }
+  _add(el) { this._current.push(el); return this; }
+  uid(id) { this._uid = id; return this; }
+  _key(prefix) {
+    if (!this._counter) this._counter = 0;
+    return `${prefix}_${++this._counter}`;
+  }
+  row() { const r = { type: 'ROW', key: this._key('r'), content: [] }; this._add(r); return this._push(r.content); }
+  endRow() { return this._pop(); }
+  col(xs, md) {
+    const c = { type: 'COL', key: this._key('c'), content: [] };
+    if (xs || md) {
+      c.length = {};
+      if (xs) c.length.xs = xs;
+      if (md) c.length.md = md;
+    }
+    this._add(c); return this._push(c.content);
+  }
+  endCol() { return this._pop(); }
+  fieldset(title) {
+    const f = { type: 'FIELDSET', key: this._key('fs'), title, content: [] };
+    this._add(f); return this._push(f.content);
+  }
+  endFieldset() { return this._pop(); }
+  label(text) { return this._add({ type: 'LABEL', key: this._key('l'), label: text }); }
+  input(id, label, opts = {}) {
+    const inp = { type: 'INPUT', key: this._key('i'), id, label };
+    if (opts.required) inp.required = true;
+    if (opts.dataType) inp.dataType = opts.dataType;
+    return this._add(inp);
+  }
+  textarea(id, label, rows = 3) {
+    return this._add({ type: 'TEXTAREA', key: this._key('t'), id, label, rows });
+  }
+  checkbox(id, label) {
+    return this._add({ type: 'CHECKBOX', key: this._key('c'), id, label });
+  }
+  select(id, label, values) {
+    return this._add({ type: 'SELECT', key: this._key('s'), id, label, values: values.map(v => ({ id: v[0], displayName: v[1] })) });
+  }
+  alert(message, color = 'info') {
+    return this._add({ type: 'ALERT', key: this._key('a'), message, color });
+  }
+  badge(title, color = 'primary') {
+    return this._add({ type: 'BADGE', key: this._key('b'), title, color });
+  }
+  spacer(width) {
+    return this._add({ type: 'SPACER', key: this._key('s'), width });
+  }
+  button(id, title, color = 'primary', isDefault = false) {
+    const btn = { type: 'BUTTON', key: this._key('btn'), id, title, color };
+    if (isDefault) btn.default = true;
+    this.actions.push(btn);
+    return this;
+  }
+  toJSON() {
+    return JSON.stringify({
+      ui: {
+        title: this.title,
+        uid: this._uid || 'layout_js',
+        layout: this.layout,
+        actions: this.actions.length > 0 ? this.actions : undefined,
+        translations: {},
+        userAccess: { cancel: true }
+      }
+    }, null, 2);
+  }
+  toObject() {
+    return {
+      ui: {
+        title: this.title,
+        uid: this._uid || 'layout_js',
+        layout: this.layout,
+        actions: this.actions.length > 0 ? this.actions : undefined,
+        translations: {},
+        userAccess: { cancel: true }
+      }
+    };
+  }
+}
+
 // DynamicBadgeList
 function DynamicBadgeList({ badgeList }) {
   if (!badgeList?.length) return null;
@@ -524,86 +617,60 @@ const CPP_SOURCES = {
   'registration-form.json': CPP_REGISTRATION,
 };
 
-// === JS source for each preset ===
-const JS_ABOUT = `const ui = {
-  title: 'About',
-  uid: 'layout_js',
-  layout: [
-    { type: 'FIELDSET', key: 'fs1', title: 'Info',
-      content: [
-        { type: 'LABEL', key: 'l1', label: 'DynamicLayout Engine v0.1.0' },
-        { type: 'LABEL', key: 'l2', label: 'Server-Driven UI for Kotlin + React' },
-      ]
-    }
-  ],
-  translations: {},
-  userAccess: { cancel: true }
-};
+// === JS source for each preset (uses JsLayout DSL — evaluated in real-time) ===
+const JS_ABOUT = `// JsLayout DSL — real-time executable
+const page = new JsLayout('About');
+page.fieldset('Info');
+page.label('DynamicLayout Engine v0.1.0');
+page.label('Server-Driven UI for Kotlin + React');
+page.endFieldset();
+page.fieldset('License');
+page.label('GPLv3 — dual license');
+page.endFieldset();
+page.toJSON()`;
 
-// Send to React: <DynamicLayout ui={ui} />
-// Or serialize: JSON.stringify({ ui })`;
+const JS_FORM = `const page = new JsLayout('Feedback');
+page.fieldset('Your Details');
+page.row();
+page.col(12, 6);
+page.input('name', 'Name', { required: true });
+page.endCol();
+page.col(12, 6);
+page.input('email', 'Email', { required: true });
+page.endCol();
+page.endRow();
+page.input('subject', 'Subject');
+page.textarea('message', 'Message', 5);
+page.endFieldset();
+page.button('send', 'Send', 'primary', true);
+page.button('cancel', 'Cancel', 'secondary');
+page.toJSON()`;
 
-const JS_FORM = `const ui = {
-  title: 'Feedback',
-  uid: 'layout_js',
-  layout: [
-    { type: 'FIELDSET', key: 'fs1', title: 'Your Details',
-      content: [
-        { type: 'ROW', key: 'r1', content: [
-          { type: 'COL', key: 'c1', length: { xs: 12, md: 6 },
-            content: [{ type: 'INPUT', key: 'i1', id: 'name', label: 'Name', required: true }] },
-          { type: 'COL', key: 'c2', length: { xs: 12, md: 6 },
-            content: [{ type: 'INPUT', key: 'i2', id: 'email', label: 'Email', required: true }] },
-        ]},
-        { type: 'INPUT', key: 'i3', id: 'subject', label: 'Subject' },
-        { type: 'TEXTAREA', key: 't1', id: 'message', label: 'Message', rows: 5 },
-      ]
-    }
-  ],
-  actions: [
-    { type: 'BUTTON', key: 'b1', id: 'send', title: 'Send', color: 'primary' },
-    { type: 'BUTTON', key: 'b2', id: 'cancel', title: 'Cancel', color: 'secondary' },
-  ],
-  translations: {},
-  userAccess: { cancel: true }
-};`;
+const JS_REGISTRATION = `const page = new JsLayout('Registration');
+page.row();
+page.col(12, 6);
+page.fieldset('Personal Info');
+page.input('firstName', 'First Name', { required: true });
+page.input('lastName', 'Last Name', { required: true });
+page.input('email', 'Email', { required: true });
+page.endFieldset();
+page.endCol();
+page.col(12, 6);
+page.fieldset('Details');
+page.input('phone', 'Phone');
+page.select('country', 'Country', [['us','USA'],['de','Germany'],['jp','Japan']]);
+page.checkbox('agree', 'I agree');
+page.endFieldset();
+page.endCol();
+page.endRow();
+page.fieldset('Additional Info');
+page.textarea('notes', 'Notes', 3);
+page.endFieldset();
+page.button('register', 'Register', 'primary', true);
+page.button('cancel', 'Cancel', 'secondary');
+page.toJSON()`;
 
-const JS_REGISTRATION = `const ui = {
-  title: 'Registration',
-  uid: 'layout_js',
-  layout: [
-    { type: 'ROW', key: 'r1', content: [
-      { type: 'COL', key: 'c1', length: { xs: 12, md: 6 },
-        content: [{ type: 'FIELDSET', key: 'fs1', title: 'Personal Info', content: [
-          { type: 'INPUT', key: 'i1', id: 'firstName', label: 'First Name', required: true },
-          { type: 'INPUT', key: 'i2', id: 'lastName', label: 'Last Name', required: true },
-          { type: 'INPUT', key: 'i3', id: 'email', label: 'Email', required: true },
-        ]}] },
-      { type: 'COL', key: 'c2', length: { xs: 12, md: 6 },
-        content: [{ type: 'FIELDSET', key: 'fs2', title: 'Details', content: [
-          { type: 'INPUT', key: 'i4', id: 'phone', label: 'Phone' },
-          { type: 'SELECT', key: 's1', id: 'country', label: 'Country',
-            values: [
-              { id: 'us', displayName: 'USA' },
-              { id: 'de', displayName: 'Germany' },
-          ]},
-          { type: 'CHECKBOX', key: 'c3', id: 'agree', label: 'I agree' },
-        ]}] },
-    ]},
-    { type: 'FIELDSET', key: 'fs3', title: 'Additional Info', collapsed: true,
-      content: [
-        { type: 'TEXTAREA', key: 't1', id: 'notes', label: 'Notes', rows: 3 },
-    ]},
-  ],
-  actions: [
-    { type: 'BUTTON', key: 'b1', id: 'register', title: 'Register', color: 'primary' },
-    { type: 'BUTTON', key: 'b2', id: 'cancel', title: 'Cancel', color: 'secondary' },
-  ],
-  translations: {},
-  userAccess: { cancel: true }
-};
-
-// <DynamicLayout ui={ui} data={data} setData={setData} />`;
+`;
 
 const JS_SOURCES = {
   'about-layout.json': JS_ABOUT,
@@ -634,6 +701,9 @@ function Playground() {
   const loadPreset = useCallback(async (name) => {
     setSelectedPreset(name);
     setData({});
+    // Always update jsCode for JS mode
+    const jsExample = JS_SOURCES[name] || JS_ABOUT;
+    setJsCode(jsExample);
     try {
       if (PRESETS[name]) {
         const resp = await fetch(PRESETS[name].url);
@@ -657,9 +727,34 @@ function Playground() {
       const kotlin = KOTLIN_SOURCES[selectedPreset] || '// No Kotlin source available';
   const cpp = CPP_SOURCES[selectedPreset] || '// No C++ source available yet';
 
-  const editorValue = mode === 'json' ? json : mode === 'kotlin' ? kotlin : mode === 'cpp' ? cpp : (JS_SOURCES[selectedPreset] || '// No JS source');
-  const isReadOnly = false;
-  const statusText = mode === 'json' ? `${chars} chars` : mode === 'kotlin' ? 'Kotlin DSL — editable' : mode === 'cpp' ? 'C (dynamiclayout.h) — editable' : 'JavaScript — editable';
+  const [jsCode, setJsCode] = useState(JS_ABOUT);
+  const [jsError, setJsError] = useState(null);
+
+  // When mode switches to 'js', try to exec the current JS code
+  useEffect(() => {
+    if (mode !== 'js') return;
+    const timer = setTimeout(() => {
+      try {
+        const fn = new Function('JsLayout', jsCode);
+        const result = fn(JsLayout);
+        if (typeof result === 'string') {
+          // Validate JSON
+          JSON.parse(result);
+          setJson(result);
+          setJsError(null);
+        } else if (typeof result === 'object' && result !== null) {
+          setJson(JSON.stringify(result, null, 2));
+          setJsError(null);
+        }
+      } catch (e) {
+        setJsError(e.message);
+      }
+    }, 300); // debounce
+    return () => clearTimeout(timer);
+  }, [jsCode, mode]);
+
+  const editorValue = mode === 'json' ? json : mode === 'kotlin' ? kotlin : mode === 'cpp' ? cpp : jsCode;
+  const statusText = mode === 'json' ? `${chars} chars` : mode === 'kotlin' ? 'Kotlin DSL — editable (JS equivalent only)' : mode === 'cpp' ? 'C (dynamiclayout.h) — editable' : jsError ? `JS Error: ${jsError}` : 'JavaScript (JsLayout DSL) — live ✨';
 
   return React.createElement('div', { className: 'playground' },
     React.createElement('div', { className: 'pane editor-pane' },
@@ -692,11 +787,13 @@ function Playground() {
       ),
       React.createElement('textarea', {
         value: editorValue,
-        onChange: isReadOnly ? undefined : e => setJson(e.target.value),
-        readOnly: isReadOnly,
+        onChange: e => {
+          if (mode === 'js') setJsCode(e.target.value);
+          else setJson(e.target.value);
+        },
         spellCheck: false,
-        placeholder: 'Paste your DynamicLayout JSON here...',
-        style: isReadOnly ? { backgroundColor: '#f4f5f7', color: '#24292e' } : {}
+        placeholder: mode === 'js' ? '// Edit JsLayout DSL — runs in real-time' : 'Paste your DynamicLayout JSON here...',
+        style: mode !== 'json' ? { backgroundColor: '#f4f5f7', color: '#24292e' } : {}
       }),
       React.createElement('div', { className: 'status-bar' },
         React.createElement('span', null, statusText),
