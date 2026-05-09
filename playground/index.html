@@ -462,6 +462,47 @@ const KOTLIN_SOURCES = {
   'registration-form.json': KOTLIN_REGISTRATION,
 };
 
+// === C++ source for each preset (from dynamiclayout.h) ===
+const CPP_ABOUT = `DL_Builder b = dl_begin(json, sizeof(json), "About");
+dl_about(&b, "Info", "DynamicLayout Engine v0.1.0");
+dl_about(&b, "License", "GPLv3");
+dl_about(&b, "Links", "Website: projectforge.org");
+dl_end(&b);`;
+
+const CPP_FORM = `DL_Builder b = dl_begin(json, sizeof(json), "Feedback");
+
+dl_fieldset(&b, "Your Details",
+  "input", "name",  "Name",
+  "input", "email", "Email",
+  "input", "subject", "Subject",
+  NULL);
+dl_end(&b);
+
+// See dynamiclayout.h for dl_fieldset() variadic API
+// Available child types: "label", "input", "button"`;
+
+const CPP_REGISTRATION = `DL_Builder b = dl_begin(json, sizeof(json), "Registration");
+
+dl_fieldset(&b, "Personal Info",
+  "input", "firstName", "First Name",
+  "input", "lastName",  "Last Name",
+  "input", "email",     "Email",
+  NULL);
+
+dl_fieldset(&b, "Details",
+  "input", "phone",   "Phone",
+  NULL);
+// Note: SELECT, CHECKBOX not yet supported in C API
+// Use dl_obj()/dl_obj_end() for custom elements
+
+dl_end(&b);`;
+
+const CPP_SOURCES = {
+  'about-layout.json': CPP_ABOUT,
+  'feedback-form.json': CPP_FORM,
+  'registration-form.json': CPP_REGISTRATION,
+};
+
 // === Playground App ===
 
 function Playground() {
@@ -469,7 +510,7 @@ function Playground() {
   const [data, setData] = useState({});
   const [error, setError] = useState(null);
   const [selectedPreset, setSelectedPreset] = useState('about-layout.json');
-  const [mode, setMode] = useState('json'); // 'json' or 'kotlin'
+  const [mode, setMode] = useState('json'); // 'json' or 'kotlin' or 'cpp'
 
   const parsed = useMemo(() => {
     try {
@@ -505,7 +546,12 @@ function Playground() {
 
   const chars = json.length;
   const isValid = !error && parsed !== null;
-  const kotlin = KOTLIN_SOURCES[selectedPreset] || '// No Kotlin source available';
+      const kotlin = KOTLIN_SOURCES[selectedPreset] || '// No Kotlin source available';
+  const cpp = CPP_SOURCES[selectedPreset] || '// No C++ source available yet';
+
+  const editorValue = mode === 'json' ? json : mode === 'kotlin' ? kotlin : cpp;
+  const isReadOnly = mode !== 'json';
+  const statusText = mode === 'json' ? `${chars} chars` : mode === 'kotlin' ? 'Kotlin DSL — read only' : 'C++ (dynamiclayout.h) — read only';
 
   return React.createElement('div', { className: 'playground' },
     React.createElement('div', { className: 'pane editor-pane' },
@@ -519,6 +565,11 @@ function Playground() {
           onClick: () => setMode('kotlin'),
           style: { fontWeight: mode === 'kotlin' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 14, color: mode === 'kotlin' ? '#0d6efd' : '#6c757d' }
         }, '💠 Kotlin'),
+        React.createElement('span', null, ' / '),
+        React.createElement('button', {
+          onClick: () => setMode('cpp'),
+          style: { fontWeight: mode === 'cpp' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 14, color: mode === 'cpp' ? '#0d6efd' : '#6c757d' }
+        }, '⚙️ C++'),
         React.createElement('select', { value: selectedPreset, onChange: e => loadPreset(e.target.value), style: { marginLeft: 'auto', fontSize: 13, padding: '2px 4px' } },
           React.createElement('option', { value: 'about-layout.json' }, 'About Page'),
           React.createElement('option', { value: 'feedback-form.json' }, 'Feedback Form'),
@@ -526,28 +577,19 @@ function Playground() {
         ),
         React.createElement('button', { onClick: () => { setData({}); setError(null); }, className: 'preset-btn', style: { marginLeft: 8, background: '#6c757d', color: '#fff', border: 'none', borderRadius: 3, padding: '2px 8px' } }, 'Reset Data'),
       ),
-      mode === 'json'
-        ? React.createElement('textarea', {
-            value: json,
-            onChange: e => setJson(e.target.value),
-            spellCheck: false,
-            placeholder: 'Paste your DynamicLayout JSON here...'
-          })
-        : React.createElement('textarea', {
-            value: kotlin,
-            readOnly: true,
-            spellCheck: false,
-            style: { backgroundColor: '#f4f5f7', color: '#24292e' }
-          }),
-      mode === 'json'
-        ? React.createElement('div', { className: 'status-bar' },
-            React.createElement('span', null, `${chars} chars`),
-            isValid && React.createElement('span', { style: { color: '#198754' } }, 'JSON ✓'),
-            !isValid && error && React.createElement('span', { style: { color: '#dc3545' } }, 'JSON ✗'),
-          )
-        : React.createElement('div', { className: 'status-bar' },
-            React.createElement('span', null, 'Kotlin DSL — read only'),
-          ),
+      React.createElement('textarea', {
+        value: editorValue,
+        onChange: isReadOnly ? undefined : e => setJson(e.target.value),
+        readOnly: isReadOnly,
+        spellCheck: false,
+        placeholder: 'Paste your DynamicLayout JSON here...',
+        style: isReadOnly ? { backgroundColor: '#f4f5f7', color: '#24292e' } : {}
+      }),
+      React.createElement('div', { className: 'status-bar' },
+        React.createElement('span', null, statusText),
+        mode === 'json' && isValid && React.createElement('span', { style: { color: '#198754' } }, 'JSON ✓'),
+        mode === 'json' && !isValid && error && React.createElement('span', { style: { color: '#dc3545' } }, 'JSON ✗'),
+      ),
       error && mode === 'json' && React.createElement('div', { className: 'error-bar' }, error),
     ),
     React.createElement('div', { className: 'pane preview-pane' },
