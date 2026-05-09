@@ -697,9 +697,9 @@ function Playground() {
   }, [json]);
 
   const loadPreset = useCallback(async (name) => {
+    console.log('loadPreset:', name, 'mode:', mode);
     setSelectedPreset(name);
     setData({});
-    // Always update jsCode for JS mode
     const jsExample = JS_SOURCES[name] || JS_ABOUT;
     setJsCode(jsExample);
     try {
@@ -747,12 +747,15 @@ function Playground() {
 
   // Handle mode switches
   const switchMode = useCallback((newMode) => {
+    console.log('switchMode:', mode, '->', newMode, 'json.length:', json.length);
     setMode(newMode);
     if (newMode === 'js') {
-      // When entering JS mode, eval the current JS code immediately
-      setTimeout(() => evalJs(jsCode), 50);
+      setTimeout(() => {
+        console.log('evalJs on mode switch');
+        evalJs(jsCode);
+      }, 50);
     }
-  }, [jsCode, evalJs]);
+  }, [jsCode, evalJs, mode, json.length]);
 
   // Debounced JS eval on code edits (only in JS mode)
   useEffect(() => {
@@ -810,6 +813,7 @@ function Playground() {
       }),
       React.createElement('div', { className: 'status-bar' },
         React.createElement('span', null, statusText),
+        React.createElement('span', { style: { fontSize: 11, color: '#888' } }, `[data: ${JSON.stringify(data).length}c]`),
         mode === 'json' && isValid && React.createElement('span', { style: { color: '#198754' } }, 'JSON ✓'),
         mode === 'json' && !isValid && error && React.createElement('span', { style: { color: '#dc3545' } }, 'JSON ✗'),
       ),
