@@ -74,6 +74,50 @@ JSON Schema describes data types and constraints (`type`, `enum`, `minLength`, `
 
 RJSF is a **client library** — server provides data schema, client renders forms. ProjectForge is a **server framework** — server controls layout structure, data types, actions, validation, and translations. RJSF gives you forms; ProjectForge gives you complete pages.
 
+### Features
+
+- **19 widget types** — checkboxes, radio, select, date, email, password, file upload, color picker, range slider, etc. Mapped from JSON Schema types automatically.
+- **Custom widgets** — register `MyCustomWidget` for any `ui:widget` value; full React component swap.
+- **Custom fields** — replace entire ObjectField/ArrayField rendering, not just individual inputs.
+- **Validation** — AJV-backed (JSON Schema validator); custom validators via `validate()` prop. Errors appear inline below fields.
+- **Form data** — `formData` prop is a controlled plain object. `onChange` fires on every keystroke.
+- **i18n** — via `translateString` prop or custom templates. No built-in translation file format.
+- **Dependencies** — field A can depend on field B via `schema.dependencies` (show/hide, enum update).
+- **Templates** — override `ObjectFieldTemplate`, `FieldTemplate`, `ArrayFieldTemplate` for layout customization.
+
+### Weaknesses
+
+- **No layout control** — `uiSchema` only allows ordering and widget choice. No Row/Col/Fieldset grid. Nested layouts require custom templates.
+- **No server-driven actions** — buttons are plain `<button type="submit">` elements. No `ResponseAction`, no toast/redirect/modal.
+- **Form-only** — no tables, no file attachment manager, no code editor, no progress bars.
+- **Client-side validation only** — server validation errors must be manually mapped to fields.
+- **No access control** — all fields/buttons visible to everyone. Must implement externally.
+- **Theme fragmentation** — 10 themes maintained by different people; feature parity varies. Bootstrap 3 theme is most complete; newer themes (Shad CN) are less mature.
+- **Bundle size** — `@rjsf/core` + theme adds ~150 KB gzipped for a form library.
+
+### Comparison with ProjectForge
+
+| Aspect | RJSF | ProjectForge |
+|--------|------|-------------|
+| **Approach** | Schema → UI (declarative) | Code → UI (imperative DSL) |
+| **Layout** | uiSchema ordering | Row/Col/Fieldset Bootstrap grid |
+| **Server control** | None — client renders | Server JSON controls everything |
+| **Forms** | ✅ Best-in-class | ✅ Full form system |
+| **Tables** | ❌ | ✅ AgGrid enterprise |
+| **File handling** | ⚠️ Upload widget only | ✅ Full attachment list + drop area |
+| **Actions** | Submit button only | ResponseAction: save/delete/redirect/toast/modal |
+| **I18n** | Client-side callback | Server-side (I18nResources) |
+| **Bundle size** | ~150 KB gzipped | Part of React app (no separate payload) |
+| **Ecosystem** | 10 themes, JSON Schema tools | Spring Boot, JPA, 42-language SDKs |
+
+### When to choose RJSF over ProjectForge
+
+- Need **only forms** and already use JSON Schema
+- Want theme selection (Material UI, Ant Design, etc.) out of the box
+- Any backend (Python, Rust, Go) — just serve JSON Schema + uiSchema
+- Standard JSON Schema ecosystem (editors, validators, code generators)
+- Quick prototype — `<Form schema={s} />` is 1 line
+
 ---
 
 ## 2. JSON Forms (EclipseSource)
@@ -125,7 +169,49 @@ Unlike RJSF, JSON Forms separates **data schema** (what data) from **UI schema**
 
 ### Key difference from ProjectForge
 
-JSON Forms has the **closest layout model** to ProjectForge (VerticalLayout ↔ ProjectForge's Col, HorizontalLayout ↔ Row, Group ↔ Fieldset). But it's still form-only: no enterprise tables, no action system, no server-side validation mapping, no access control. ProjectForge goes further by making the layout fully server-controlled.
+JSON Forms has the **closest layout model** to ProjectForge (VerticalLayout ↔ ProjectForge's Col, HorizontalLayout ↔ Row, Group ↔ Fieldset, Categorization ↔ Tabs). But it's still form-only: no enterprise tables, no action system, no server-side validation mapping, no access control. ProjectForge goes further by making the layout fully server-controlled.
+
+### Features
+
+- **Layout primitives** — `VerticalLayout`, `HorizontalLayout`, `Group`, `Categorization` (tabs with categories). The only form library with first-class layout concepts.
+- **Multi-framework** — identical JSON schemas render in React (Material UI), Angular (Material), and Vue (Vuetify). Switch frameworks without changing the JSON.
+- **Rule system** — conditional visibility (`rule.condition` + `rule.effect: HIDE/SHOW/ENABLE/DISABLE`). Evaluated client-side on data change.
+- **Custom renderers** — register per-UI-schema-element (`"options": {"renderer": "MyCustomControl"}`). Tester function determines which renderer to use.
+- **Validation** — JSON Schema validation via AJV. Custom validators per field. Errors displayed inline.
+- **Data binding** — `scope: "#/properties/name"` binds UI controls to JSON paths. Supports nested objects and arrays.
+- **Enum support** — `oneOf`/`anyOf` JSON Schema keywords auto-render as dropdowns or radio buttons.
+- **Professional support** — EclipseSource offers commercial support, training, and custom development.
+
+### Weaknesses
+
+- **Form-only** — no tables, no file management, no action buttons beyond form submission. Same limitations as RJSF.
+- **Client-rendered** — the UI schema is evaluated entirely in the browser. Server has no control over visibility or behavior after initial render.
+- **Steep learning curve** — separate data schema + UI schema + rule system means three JSON files to understand. Debugging why a control doesn't render requires tracing scope paths.
+- **Smaller community** — 1 800 stars vs RJSF's 15 800. Fewer examples, fewer StackOverflow answers.
+- **Rule performance** — complex rules (100+ conditions on large forms) evaluated on every data change. No incremental/dirty-checking optimization.
+- **No action system** — no toast, redirect, modal. Form submission is a plain HTML POST.
+
+### Comparison with ProjectForge
+
+| Aspect | JSON Forms | ProjectForge |
+|--------|-----------|-------------|
+| **Layout model** | Vertical/Horizontal/Group/Categorization | Row/Col/Fieldset/Group/Inline |
+| **Layout ↔ PFDL** | VerticalLayout ≈ Col, HorizontalLayout ≈ Row, Group ≈ Fieldset | — |
+| **Frameworks** | React, Angular, Vue | React only |
+| **Server control** | None — UI rendered client-side | Full — JSON from server |
+| **Tables** | ❌ | ✅ AgGrid |
+| **Actions** | Submit only | ResponseAction: all targets |
+| **Tabs** | ✅ Categorization built-in | ⚠️ Via custom components |
+| **Rules** | ✅ Built-in conditional engine | ⚠️ watchFields (server round-trip) |
+| **File upload** | ❌ | ✅ DropArea + AttachmentList |
+| **Enterprise** | Professional support available | Spring Security + JPA + i18n |
+
+### When to choose JSON Forms over ProjectForge
+
+- Need forms with **real layout control** (VerticalLayout, Categorization tabs) — the only library with this
+- Multi-framework project — same JSON works in React, Angular, and Vue simultaneously
+- Want conditional visibility rules evaluated on the client without server round-trips
+- Professional support contract needed (EclipseSource)
 
 ---
 
@@ -186,6 +272,48 @@ Formily extends JSON Schema with `x-*` properties (`x-component`, `x-reactions`,
 ### Key difference from ProjectForge
 
 Formily is the **most technically advanced form library** with reactive rendering, but it's still a client library. Server provides data schema; client handles all rendering. ProjectForge is server-driven: the server sends the complete UI definition, not just a data schema.
+
+### Features
+
+- **Reactive core** — `@formily/reactive` uses JavaScript Proxy to track field-level dependencies. When field A changes, only fields that depend on A re-render. Not the entire form. O(1) renders, not O(n).
+- **X-properties** — extends JSON Schema with `x-component` (which React component), `x-decorator` (wrapper), `x-reactions` (dynamic behavior), `x-validator` (validation rules). All in-band in the JSON Schema.
+- **Designable** — visual drag-and-drop form builder. Non-developers can design forms. Generates Formily JSON Schema. [Live demo](https://designable-antd.formilyjs.org/).
+- **Cross-framework** — identical form schema renders in React (Ant Design), React Native, Vue 2, and Vue 3. Same core, different renderers.
+- **Field reactions** — `x-reactions` supports declarative field dependencies: "when field A equals X, set field B to Y, make field C required, hide field D." All in JSON, no code.
+- **Validation engine** — `x-validator` supports built-in rules (`required`, `max`, `min`, `pattern`, `email`, `url`) and custom validators. Async validation supported.
+- **Array tables** — `ArrayTable`, `ArrayCards`, `ArrayTabs`, `ArrayCollapse` for repeatable form sections. Closest thing to a table in any form library.
+- **Schema recursion** — `x-recursion` property enables self-referencing schemas (tree forms, nested repeatable sections).
+
+### Weaknesses
+
+- **Extreme complexity** — `@formily/core` + `@formily/react` + `@formily/antd` + `@formily/reactive` = 4+ packages. Learning curve steeper than any competitor.
+- **Chinese-first documentation** — most docs, examples, and Designable UI are in Chinese. English docs exist but are less comprehensive.
+- **Alibaba dependency** — developed and maintained by Alibaba. If they deprioritize it, the ecosystem shrinks. Less community ownership than RJSF.
+- **Form-only** — despite ArrayTable/ArrayCards, it's still forms. No real data tables (sorting, filtering, pagination), no file attachment manager.
+- **Client-centric** — no server-driven UI. Server serves JSON Schema; client decides rendering. No `ResponseAction`, no server-to-client action commands.
+- **Bundle size** — reactive core + form renderer + UI library bindings add significant weight (~200+ KB gzipped).
+
+### Comparison with ProjectForge
+
+| Aspect | Formily | ProjectForge |
+|--------|---------|-------------|
+| **Reactivity** | ✅ Proxy-based field-level | ❌ Full tree re-render |
+| **Performance** | O(1) renders per field change | O(n) renders per change |
+| **Visual builder** | ✅ Designable (drag-and-drop) | ❌ None |
+| **Form complexity** | 100+ field forms, complex deps | Medium forms |
+| **Tables** | ⚠️ ArrayTable (repeatable) | ✅ AgGrid enterprise |
+| **Server control** | None — client renders | Full — server JSON |
+| **Learning curve** | Steep (4 packages, Proxy patterns) | Medium (Kotlin DSL) |
+| **Language** | React/Vue only | 42 language SDKs → JSON |
+| **Enterprise** | No built-in | Spring Security + JPA + i18n |
+
+### When to choose Formily over ProjectForge
+
+- **150+ field forms** with heavy cross-field dependencies — Formily's reactive engine is unmatched
+- Need a **visual form builder** (Designable) for non-developers
+- Form-centric application — not pages with tables, dashboards, or file management
+- Already using Ant Design ecosystem
+- Team has React + Proxy/observable experience
 
 ---
 
@@ -257,6 +385,50 @@ The server returns **metadata** about resources, properties, and actions. The Re
 ### Key difference from ProjectForge
 
 AdminJS is a **CRUD generator** for Node.js. It's opinionated (resources → CRUD actions → templates). ProjectForge is a **full SDUI framework** for Java/Kotlin — you build every page explicitly, with complete control over layout and behavior.
+
+### Features
+
+- **Auto-generated CRUD** — point AdminJS at a database model, get list/show/edit/delete views instantly. Zero UI code for standard operations.
+- **8 ORM adapters** — TypeORM, Sequelize, Prisma, MikroORM, Mongoose, Objection, SQL (Knex), and a base adapter for custom integrations. Pick your ORM, AdminJS adapts.
+- **6 framework plugins** — Express, NestJS, Hapi, Koa, Fastify. Drop into existing Node.js apps.
+- **Role-Based Access Control** — `isAccessible`, `isVisible` callbacks per action and per property. Integrates with any auth system (Passport, Auth0, custom JWT).
+- **Custom components** — override any part of the admin panel with your own React components: custom pages, custom actions, custom property renderers.
+- **Dashboard** — customizable home page with widgets and stats.
+- **Theming** — built-in Design System (Bootstrap-based). CSS overrides via `branding.theme` config.
+- **Enterprise (AdminJS Pro)** — hosted version with audit logs, advanced RBAC, theming editor, priority support.
+- **Validation** — server-side only. Validators defined in resource options (`isRequired`, `isEmail`, custom functions). Errors returned to the React frontend and displayed inline.
+
+### Weaknesses
+
+- **CRUD-only** — admin panels are a solved problem. If your app needs custom workflows, dashboards, or complex multi-step forms, AdminJS doesn't help.
+- **Node.js only** — no Java, Python, Go support. If your backend is Spring Boot, you can't use AdminJS.
+- **Opinionated UI** — list pages, edit pages, show pages follow a rigid template. Layout customization is limited to property ordering and grouping.
+- **No forms library** — doesn't compete with RJSF/Formily for form building. It generates simple forms from model metadata.
+- **No tables library** — lists are rendered as basic HTML tables. No AgGrid, no sorting/filtering/pagination beyond what the ORM provides.
+- **Server-rendered metadata** — the server sends resource metadata, not a complete UI layout. The React frontend interprets metadata into templates. Less flexible than raw layout JSON.
+
+### Comparison with ProjectForge
+
+| Aspect | AdminJS | ProjectForge |
+|--------|---------|-------------|
+| **Philosophy** | Auto-generate from models | Explicitly build every page |
+| **Speed** | Instant CRUD (zero UI code) | Medium (each page manually) |
+| **Custom pages** | ⚠️ Custom components, limited | ✅ Full control via Kotlin DSL |
+| **Forms** | Auto-generated from model | Full form system with validation |
+| **Tables** | ⚠️ Basic HTML tables | ✅ AgGrid enterprise |
+| **Backend** | Node.js/TypeScript only | 42 language SDKs → JSON |
+| **ORMs** | 8 adapters | JPA/Hibernate native |
+| **Auth** | Callback-based (external) | Spring Security (built-in) |
+| **Enterprise** | Pro version ($) | Spring Boot + JPA + i18n |
+| **Learning curve** | Low (config-based) | Medium (Kotlin DSL) |
+
+### When to choose AdminJS over ProjectForge
+
+- **Node.js/TypeScript stack** — AdminJS is the best admin panel for the ecosystem
+- Need a **quick admin panel** over existing database tables — 10 minutes to working CRUD
+- CRUD operations cover 90%+ of admin needs
+- Small team — auto-generation means no UI code to maintain
+- Want commercial support (AdminJS Pro)
 
 ---
 
@@ -347,6 +519,37 @@ Causeway stores UI definitions in two forms:
 
 Causeway follows "domain dictates UI" (Naked Objects pattern). ProjectForge follows "developer builds UI explicitly." Causeway is faster for simple CRUD apps but limited for complex enterprise UIs. ProjectForge gives more control at the cost of more effort per page.
 
+### Features
+
+- **Naked Objects** — the full architectural pattern: write domain objects, UI auto-generates. No controllers, no templates, no DTOs. Just entities + annotations.
+- **Apache Wicket viewer** — server-rendered HTML. SEO-friendly. No JavaScript required. Works with disabled JS.
+- **Restful Objects viewer** — automatic REST API from domain objects. Full OpenAPI/Swagger generation. Use the same domain model for web and mobile.
+- **Metamodel** — all `@DomainObject`, `@Property`, `@Action` annotations are introspected at startup into an in-memory metamodel. Layout, validation, and behavior are derived from this metamodel.
+- **Layout customization** — `.layout.xml` files override auto-generated layouts per domain object. XML defines columns, tabs, fieldset groupings.
+- **Security (SecMan)** — built-in role-based access control. Users, roles, permissions managed as domain objects themselves.
+- **Audit trail** — `CommandLog` captures every action invocation. `ExecutionLog` records timing. Built-in, no configuration needed.
+- **i18n** — translations via `.po` files. All UI text (labels, action names, messages) can be translated.
+- **Production track record** — Irish Department of Social Protection runs on Causeway since 2002. 20+ years in production government systems.
+
+### Weaknesses
+
+- **UI looks dated** — Wicket renders plain Bootstrap HTML. No modern React/Vue SPA experience. Animations, transitions, live updates require custom JavaScript.
+- **Naked Objects constraints** — domain must map naturally to "object + fields + actions" paradigm. Complex multi-step wizards, dashboards, or non-CRUD flows require workarounds.
+- **Small community** — 890 stars, Apache governance means slower release cycles. Fewer tutorials, fewer StackOverflow answers.
+- **XML layout** — `.layout.xml` files are verbose and error-prone. No type-safety, no IDE autocompletion. Contrast with Kotlin DSL.
+- **Wicket dependency** — Wicket is an older, server-rendered framework. Fewer developers know it. Harder to hire for. Contrast with React ecosystem.
+- **Basic tables** — object collections render as simple tables. No AgGrid-level sorting, filtering, column pinning, or Excel export. For data-heavy applications this is a significant limitation.
+- **Reflection overhead** — metamodel building at startup scans all domain classes. For large applications (200+ entities), startup time increases noticeably.
+- **No client-side rendering option** — server-rendered only. No React/Angular/Vue frontend. The Restful Objects viewer is an API, not a UI.
+
+### When to choose Apache Causeway over ProjectForge
+
+- **DDD-aligned team** — if your team thinks in domain objects and annotations, Causeway is a natural fit
+- Domain model is **stable** — UI should auto-adapt as domain changes
+- Small team that cannot afford dedicated UI developers — Causeway generates complete UIs
+- SEO matters — server-rendered HTML without JavaScript dependency
+- Government/enterprise that values Apache governance and 20+ year track record
+
 ---
 
 ## 5. DivKit (Yandex)
@@ -387,27 +590,54 @@ Open-source Server-Driven UI framework from Yandex. Describes UI in JSON ("DivJs
 
 ### Features
 
-- **Contains** (vertical/horizontal/overlap), **gallery**, **grid**, **pager**, **tabs**, **slider**
-- **Variables** with `@{var}` expressions and `min/max` functions
-- **State machine** — `states[]` with `state_id` transitions
-- **Animations** — fade, slide, transition between states
-- **Templates** — reusable component definitions with parameterized fields (`$field`)
-- **Actions** — `set_variable`, `set_state`, `clear_focus`, `submit`, `download`
-- **Custom components** via extension API
+- **Containers** — vertical, horizontal, overlap (z‑stack). **Gallery** (image carousel), **grid** (fixed-column layout), **pager** (swipeable pages), **tabs** (top/bottom tab bar), **slider** (horizontal scroll).
+- **Variables** — `@{count + 1}`, `@{min(alpha, 0.5)}`, `@{condition ? a : b}`. Arithmetic, string concat, ternary. Evaluated client-side in native code.
+- **State machine** — `states[]` array with `state_id` values. Transitions triggered by actions. Each state can have a different `div` tree. Enables multi-screen flows in a single DivJson.
+- **Animations** — `fade_in`, `fade_out`, `slide_in`, `slide_out`, `set` transitions between states. Duration, delay, interpolator configurable per transition.
+- **Templates** — reusable `"templates": {"userCard": {...}}` block with `$field` parameterization. Instantiate with `"type": "template", "template": "userCard", "args": {"name": "..."}`. Reduces payload size.
+- **Actions** — `set_variable`, `set_state`, `clear_focus`, `submit`, `download`. Actions execute on tap, long press, swipe, or programmatically via `@{var}` triggers.
+- **Custom components** — register native iOS/Android extensions. DivKit dispatches unknown types to your extension handler. Write platform-specific code once.
+- **Text/rich formatting** — `<b>`, `<i>`, `<br>`, links, colors, font sizes, alignment. Inline formatting within a single text element.
+- **Images** — network images with placeholder, scale type, aspect ratio, corner radius, tint color. GIF support.
+- **Server JSON builders** — TypeScript (`@divkitframework/json-builder`), Kotlin, Python packages for generating DivJson server-side.
+- **Ready for A/B testing** — Yandex uses DivKit to serve different UIs to different user segments. The server decides which DivJson to return.
 
-### When to choose DivKit
+### Weaknesses
 
-- Need **cross-platform mobile app** (iOS + Android) with SDUI
-- Need remote UI updates without App Store releases
-- Static screens, cards, feeds, media galleries
-- Need native rendering performance on mobile
+- **Mobile-first, web-second** — the Web renderer uses Svelte (not React). Feature parity between native and web is incomplete. Complex animations may not render on web.
+- **Limited form inputs** — only `input` (text), `textarea` (multiline), `select` (dropdown). No date picker, no time picker, no autocomplete, no rich text, no file upload, no star rating. Yandex apps pair DivKit with custom native form components.
+- **No enterprise tables** — no data grid, no AgGrid, no sorting/filtering/pagination. Gallery and grid are for image/content layout, not tabular data.
+- **No validation** — DivKit has no concept of form validation. No required fields, no pattern matching, no error states. Apps must implement validation natively.
+- **No i18n** — no built-in translation system. App must handle localization before feeding data to DivJson or use variables.
+- **No access control** — all UI elements are visible to everyone. No permission-based show/hide.
+- **Yandex governance** — developed by Yandex for Yandex products. Roadmap is driven by their internal needs. Community contributions accepted but priorities are Yandex-first.
+- **Complexity ceiling** — state machines + variables + templates + animations make DivJson files hard to reason about at scale. Debugging state transitions requires the playground.
+- **JSON payload size** — full DivJson documents can be large (10-50 KB). Templates help compress repeated structures, but initial payloads are heavy.
 
-### When NOT to choose
+### Comparison with ProjectForge
 
-- Web-only application (DivKit Web uses Svelte, not React natively)
-- Complex enterprise forms — no date picker, autocomplete, rich text, file upload
-- Java/Spring ecosystem — no server-side integration
-- Need complex data tables, sorting, filtering, export
+| Aspect | DivKit | ProjectForge |
+|--------|-------|-------------|
+| **Platform** | iOS, Android, Web (Svelte) | Web (React) |
+| **Rendering** | Native | React DOM |
+| **Templates** | ✅ Built-in with params | ❌ Not yet |
+| **Variables** | ✅ `@{var + 1}` expressions | ❌ Not yet |
+| **Animations** | ✅ State transitions | ❌ None |
+| **Complex forms** | ⚠️ Basic input fields | ✅ Full form system |
+| **Tables** | ❌ Gallery/grid only | ✅ AgGrid enterprise |
+| **Form inputs** | input, textarea, select | input, select, checkbox, radio, date, time, rating, editor, autocomplete, creatable select, dropdown, file upload, attachment list |
+| **Enterprise integration** | ❌ None | ✅ Spring Security, JPA, i18n |
+| **Validation** | ❌ None | ✅ Server-side (JPA + Spring) |
+| **i18n** | ❌ None | ✅ Server-side (I18nResources) |
+| **A/B testing** | ✅ Architecture supports it | ❌ |
+
+### When to choose DivKit over ProjectForge
+
+- **Mobile-first SDUI** for iOS + Android with native rendering — DivKit is unmatched
+- Need **server-side A/B testing** — deploy different UIs to different users instantly
+- Content-rich apps (cards, feeds, media galleries) — DivKit's layout primitives excel here
+- Remote UI updates without App Store review cycles
+- Static screens with basic inputs — not complex enterprise forms
 
 ### How server stores UI
 
@@ -427,20 +657,6 @@ Open-source Server-Driven UI framework from Yandex. Describes UI in JSON ("DivJs
 ```
 
 Server returns DivJson with the full UI description. Templates are reusable JSON definitions with `$param` substitution, reducing payload size.
-
-### Comparison with ProjectForge
-
-| Aspect | DivKit | ProjectForge |
-|--------|-------|-------------|
-| **Platform** | iOS, Android, Web (Svelte) | Web (React) |
-| **Rendering** | Native | React DOM |
-| **Templates** | ✅ Built-in with params | ❌ Not yet |
-| **Variables** | ✅ `@{var + 1}` expressions | ❌ Not yet |
-| **Animations** | ✅ State transitions | ❌ None |
-| **Complex forms** | ⚠️ Basic input fields | ✅ Full form system |
-| **Tables** | ❌ Gallery/grid only | ✅ AgGrid enterprise |
-| **Form inputs** | input, textarea, select | input, select, checkbox, radio, date, time, rating, editor, autocomplete, creatable select, dropdown, file upload, attachment list |
-| **Enterprise integration** | ❌ None | ✅ Spring Security, JPA, i18n |
 
 ### Key difference
 
