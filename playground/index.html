@@ -1038,14 +1038,21 @@ function Playground() {
           React.createElement('option', { value: 'registration-form.json' }, 'Registration Form'),
           React.createElement('option', { value: 'all-components.json' }, 'All Components'),
         ),
-        React.createElement('span', {
-          style: {
-            marginLeft: 12, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 3,
-            color: isModified ? '#dc3545' : '#198754',
-            backgroundColor: isModified ? '#f8d7da' : '#d1e7dd',
-          }
-        }, isModified ? '✱ MODIFIED' : '● ORIGINAL'),
-        React.createElement('button', { onClick: () => loadPreset(selectedPreset), className: 'preset-btn', style: { marginLeft: 4, background: '#6c757d', color: '#fff', border: 'none', borderRadius: 3, padding: '2px 8px' } }, 'Reset Data'),
+        React.createElement('div', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 } },
+          React.createElement('a', {
+            href: 'https://github.com/MaurerAnton/projectforge-dynamiclayout/tree/master/docs/projectforge-sdui-engine-docs',
+            target: '_blank',
+            style: { fontSize: 11, color: '#0d6efd', textDecoration: 'none', padding: '2px 8px', borderRadius: 3, border: '1px solid #0d6efd' }
+          }, '📄 Docs'),
+          React.createElement('span', {
+            style: {
+              fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 3,
+              color: isModified ? '#dc3545' : '#198754',
+              backgroundColor: isModified ? '#f8d7da' : '#d1e7dd',
+            }
+          }, isModified ? '✱ MODIFIED' : '● ORIGINAL'),
+          React.createElement('button', { onClick: () => loadPreset(selectedPreset), style: { background: '#6c757d', color: '#fff', border: 'none', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', fontSize: 11 } }, 'Reset'),
+        ),
       ),
       React.createElement('textarea', {
         value: editorValue,
