@@ -1,6 +1,6 @@
 # Architecture
 
-> **TL;DR:** The DynamicLayout JSON format is generated from 42 languages (Kotlin, C, Go, Python, Rust, ..., Solidity). HTTP transports it to the browser, and React's `DynamicRenderer` recursively renders into the DOM. [Open the playground](https://raw.githack.com/MaurerAnton/projectforge-dynamiclayout/master/playground/index.html) and write code to see it live.
+> **TL;DR:** The DynamicLayout JSON format is generated from 42 languages (Kotlin, C, Go, Python, Rust, ..., Solidity), rendered in 12 client frameworks. HTTP transports it to the browser, and React's `DynamicRenderer` recursively renders into the DOM. [Open the playground](https://raw.githack.com/MaurerAnton/projectforge-dynamiclayout/master/playground/index.html) in your browser or run the **mobile playground** (`mobile_playground/`) on iOS/Android.
 
 ## Architecture layers
 
