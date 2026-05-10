@@ -1,6 +1,6 @@
 # Architecture
 
-> **TL;DR:** Four paths to UI — Kotlin DSL or C/C++ API generates JSON, HTTP transports it, and React's `DynamicRenderer` recursively renders it into the DOM. [Open the playground](https://raw.githack.com/MaurerAnton/projectforge-dynamiclayout/master/playground/index.html) and paste any JSON from this doc to see it live.
+> **TL;DR:** Four ways to build UI — Kotlin DSL, C API, or JavaScript DSL generate JSON; HTTP transports it; React's `DynamicRenderer` recursively renders it into the DOM. [Open the playground](https://raw.githack.com/MaurerAnton/projectforge-dynamiclayout/master/playground/index.html) and write JsLayout code to see it live.
 
 ## Architecture layers
 
@@ -63,7 +63,7 @@
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-The diagram above maps exactly to how you build in the playground: you write JSON (left pane) and it renders instantly (right pane). In production, the Kotlin DSL or C API generates the JSON automatically.
+The diagram above maps exactly to how you build in the playground: you write JSON or JsLayout (left pane) and it renders instantly (right pane). In production, the Kotlin DSL or C API generates the JSON automatically.
 
 ---
 
@@ -304,6 +304,122 @@ examples/cpp/
 ├── c-example.c           # Pure C99 example
 ├── cpp-example.cpp       # C++ example
 └── demo.c                # Interactive C demo
+```
+
+---
+
+## 1c. JavaScript DSL (JsLayout)
+
+`JsLayout` is a **live, client-side** builder that mirrors the Kotlin DSL in pure JavaScript. Unlike Kotlin (compile, deploy, HTTP) and C (compile, run, pipe), JsLayout runs **directly in the browser** — edit a line, see the result instantly. This makes it the fastest feedback loop for designing layouts.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  const page = new JsLayout('My Page');                          │
+│                                                                  │
+│  page.fieldset('Info');           →  builder enters container    │
+│  page.input('name', 'Name');      →  adds INPUT element          │
+│  page.endFieldset();              →  exits container             │
+│                                                                  │
+│  page.toJSON();                   →  outputs JSON string         │
+│  page.toObject();                 →  outputs plain JS object     │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Why JavaScript?
+
+- **Instant feedback** — the playground evaluates JsLayout code on every keystroke (400ms debounce). No compile step, no HTTP round-trip.
+- **Same API shape as Kotlin** — `page.fieldset()`, `page.row()`, `page.input()`, `page.button()` mirror the Kotlin DSL method names.
+- **Prototyping** — design a layout in JsLayout first, visually confirm it renders correctly, then translate to Kotlin for production.
+- **Dynamic generation** — because it's JavaScript, you can use loops, conditions, and computed values:
+
+```js
+const page = new JsLayout('Dynamic List');
+page.fieldset('Users');
+for (const user of ['Alice', 'Bob', 'Charlie']) {
+  page.input(`user_${user}`, user);
+}
+page.endFieldset();
+page.toJSON();
+```
+
+### API reference
+
+`JsLayout` uses a **stack-based builder** — opening a container pushes onto an internal stack; closing pops off. This is the same pattern as the C API (`dl_fieldset` push, `dl_end_fieldset` pop).
+
+| Method | Generates | Parameters |
+|--------|-----------|------------|
+| `new JsLayout(title)` | Root layout object | `title: string` |
+| `.fieldset(title)` | Open `FIELDSET` container | `title: string` |
+| `.endFieldset()` | Close current FIELDSET | — |
+| `.row()` | Open `ROW` container | — |
+| `.endRow()` | Close current ROW | — |
+| `.col(xs?, md?)` | Open `COL` column | `xs, md: number` (Bootstrap breakpoints) |
+| `.endCol()` | Close current COL | — |
+| `.label(text)` | Add `LABEL` | `text: string` |
+| `.input(id, label, opts?)` | Add `INPUT` | `opts.required`, `opts.dataType` |
+| `.textarea(id, label, rows?)` | Add `TEXTAREA` | `rows: number` (default 3) |
+| `.checkbox(id, label)` | Add `CHECKBOX` | — |
+| `.select(id, label, values)` | Add `SELECT` | `values: [[id, displayName], ...]` |
+| `.alert(message, color?)` | Add `ALERT` | `color: 'info'|'warning'|'danger'|'success'` |
+| `.badge(title, color?)` | Add `BADGE` | `color: 'primary'|'secondary'|...` |
+| `.spacer(width)` | Add `SPACER` | `width: number` (px) |
+| `.button(id, title, color?, isDefault?)` | Add button to `actions[]` | `color: 'primary'|'secondary'|'danger'`, `isDefault: bool` |
+| `.toJSON()` | `JSON.stringify` output | Returns formatted JSON string |
+| `.toObject()` | Raw JS object | Returns `{ui: {title, layout, actions, ...}}` |
+
+### Compared to Kotlin DSL
+
+```kotlin
+// Kotlin (production)
+val layout = UILayout("'Feedback")
+layout.add(UIFieldset(title = "'Your Details")
+    .add(UIInput(id = "name", label = "'Name"))
+    .add(UIInput(id = "email", label = "'Email")))
+layout.addAction(UIButton.createSaveButton("send", "'Send"))
+layout.addAction(UIButton.createCancelButton())
+```
+
+```js
+// JsLayout (playground / prototyping)
+const page = new JsLayout('Feedback');
+page.fieldset('Your Details');
+page.input('name', 'Name');
+page.input('email', 'Email');
+page.endFieldset();
+page.button('send', 'Send', 'primary', true);
+page.button('cancel', 'Cancel', 'secondary');
+page.toJSON();
+```
+
+The generated JSON is identical. The only difference is where the code runs: Kotlin runs on the server and sends JSON over HTTP; JsLayout runs in the browser and feeds directly into `DynamicRenderer`.
+
+### How evaluation works in the playground
+
+```
+User types JsLayout code
+        │
+        ▼
+  (400ms debounce)
+        │
+        ▼
+  eval(code)          ←  executes in page context
+        │               ←  JsLayout class is globally available
+        ▼
+  page.toObject()     ←  produces {ui: {...}}
+        │
+        ▼
+  DynamicRenderer     ←  renders into preview pane
+```
+
+`eval()` runs the code synchronously in the page's scope where `JsLayout` is defined as `window.JsLayout`. This is why edit → render is instant — no server, no fetch, no compilation.
+
+> **Playground:** Switch to **🟨 JavaScript** view. Type `page.input('hello', 'Hello World').toJSON()` — the preview updates as you type. Change `input` to `checkbox` and watch the component swap. The JS mode is the only playground mode that evaluates **live** (JSON, Kotlin, and C modes are read-only reference views).
+
+### Source
+
+```
+playground/index.html              # JsLayout class (lines 291-378)
+examples/js/js-example.js          # Standalone JsLayout example
 ```
 
 ---
@@ -708,12 +824,12 @@ The JSON format is the stable interface. Any language can generate it — Kotlin
 
 ## Summary
 
-| Concept | Generator (Kotlin) | Generator (C) | Transport (JSON) | Renderer (React) |
-|---------|-------------------|---------------|------------------|-------------------|
-| **Layout** | `UILayout`, `UIRow`, `UICol`, `UIFieldset` | `dl_fieldset()`, `dl_row()`, `dl_col()` | `layout[]` array of elements | `DynamicRenderer` + container components |
-| **Form fields** | `UIInput(id, dataType, required, maxLength)` | `dl_input()`, `dl_textarea()`, `dl_checkbox()` | `{type:"INPUT", id:"email"}` | `DynamicInputResolver` dispatches by dataType |
-| **Actions** | `UIButton(id, responseAction)` | `dl_button()`, `dl_actions()` | `{type:"BUTTON", responseAction:{...}}` | `DynamicButton` → `callAction()` |
-| **Validation** | `ValidationError(fieldId, message)` from Spring | N/A (client renders errors from JSON) | `validationErrors[]` in response | `DynamicValidationManager` binds to fields |
-| **i18n** | `I18nHelper.translate(key)` | N/A (hardcoded strings) | `translations: {"key":"Value"}` | Read from context, never translate |
-| **Access** | Spring Security → `userAccess{}` map | N/A (hardcoded `userAccess`) | `userAccess: {update:true}` | Show/hide buttons |
-| **Data** | Entity objects (JPA) | Raw JSON strings | `data: {id:..., email:...}` | `DynamicLayoutContext → data[id]` |
+| Concept | Generator (Kotlin) | Generator (C) | Generator (JS) | Transport (JSON) | Renderer (React) |
+|---------|-------------------|---------------|----------------|------------------|-------------------|
+| **Layout** | `UILayout`, `UIRow`, `UICol`, `UIFieldset` | `dl_fieldset()`, `dl_row()`, `dl_col()` | `page.fieldset()`, `page.row()`, `page.col()` | `layout[]` array of elements | `DynamicRenderer` + container components |
+| **Form fields** | `UIInput(id, dataType, required, maxLength)` | `dl_input()`, `dl_textarea()`, `dl_checkbox()` | `page.input()`, `page.textarea()`, `page.checkbox()` | `{type:"INPUT", id:"email"}` | `DynamicInputResolver` dispatches by dataType |
+| **Actions** | `UIButton(id, responseAction)` | `dl_button()`, `dl_actions()` | `page.button()` | `{type:"BUTTON", responseAction:{...}}` | `DynamicButton` → `callAction()` |
+| **Validation** | `ValidationError(fieldId, message)` from Spring | N/A | N/A | `validationErrors[]` in response | `DynamicValidationManager` binds to fields |
+| **i18n** | `I18nHelper.translate(key)` | hardcoded strings | hardcoded strings | `translations: {"key":"Value"}` | Read from context, never translate |
+| **Access** | Spring Security → `userAccess{}` map | hardcoded `userAccess` | hardcoded `userAccess` | `userAccess: {update:true}` | Show/hide buttons |
+| **Data** | Entity objects (JPA) | raw JSON strings | JS objects | `data: {id:..., email:...}` | `DynamicLayoutContext → data[id]` |
