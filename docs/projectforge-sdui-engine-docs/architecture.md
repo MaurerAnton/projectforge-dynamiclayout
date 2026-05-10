@@ -365,39 +365,47 @@ Reference implementation: `dynamiclayout.h` (C) — the simplest, most portable 
 
 ## 1d. Client SDKs (renderers)
 
-PFDL JSON can be rendered in multiple client frameworks — not just React. Each renderer uses the same component registry pattern (`type` → component) and recursive rendering.
+PFDL JSON can be rendered in 12 client frameworks — not just React. Each renderer uses the same component registry pattern (`type` → component) and recursive rendering.
 
 ```
-dynamiclayout-wc.js          # Web Components — works in any framework or no framework
-dynamiclayout-vue.vue         # Vue 3 component (Composition API)
-Layout.svelte                 # Svelte 5 component ($state runes)
-dynamiclayout_flutter.dart    # Flutter widget (iOS, Android, Web, Desktop)
-DynamicLayout.swiftui         # SwiftUI view (iOS 16+, macOS 13+)
+dynamiclayout-wc.js          # Web Components — framework-agnostic
+dynamiclayout-vue.vue         # Vue 3 (Composition API)
+dynamiclayout-angular.ts      # Angular 15+ standalone
+Layout.svelte                 # Svelte 5 ($state runes)
+dynamiclayout-solid.jsx       # SolidJS 1.8+
+DynamicLayout.native.tsx      # React Native (iOS, Android)
+dynamiclayout_flutter.dart    # Flutter (iOS, Android, Web, Desktop)
+DynamicLayout.swiftui         # SwiftUI (iOS 16+, macOS 13+)
 DynamicLayout.compose.kt      # Jetpack Compose (Android)
+dynamiclayout_htmx.py         # HTMX server-rendered pattern
+DynamicLayout.qml             # Qt/QML (Desktop, Embedded, Mobile)
 ```
 
 | Renderer | Type | Components | Notes |
 |----------|------|:----------:|-------|
 | **React** (production) | Framework | 30 | `DynamicRenderer` in `projectforge-webapp` |
-| **Web Components** | Framework-agnostic | 17 | `<dl-layout>` custom element — works everywhere |
-| **Vue 3** | Framework | 17 | Composition API, `provide/inject` for context |
+| **Vue 3** | Framework | 17 | Composition API, `provide/inject` context |
+| **Angular** | Framework | 17 | Standalone component, `[(ngModel)]` binding |
 | **Svelte 5** | Framework | 17 | `$state` runes, event delegation |
-| **Flutter** | Mobile | 17 | `StatefulWidget` — cross-platform from one codebase |
-| **SwiftUI** | iOS/macOS | 17 | Native Apple — `@State` + `@Binding` |
-| **Jetpack Compose** | Android | 17 | Native Android — `mutableStateMapOf` for reactive data |
+| **SolidJS** | Framework | 17 | Fine-grained reactivity, no VDOM |
+| **Web Components** | Agnostic | 17 | `<dl-layout>` — works in any HTML page |
+| **React Native** | Mobile | 17 | iOS + Android from one JS codebase |
+| **Flutter** | Mobile | 17 | Cross-platform from one Dart codebase |
+| **SwiftUI** | Apple | 17 | Native — `@State` + `@Binding` |
+| **Compose** | Android | 17 | Native — `mutableStateMapOf` |
+| **HTMX** | Server HTML | 17 | Server renders PFDL → HTMX-enhanced HTML |
+| **Qt/QML** | Desktop/Embedded | 17 | Qt Quick — Linux, Windows, embedded |
 
 ### Porting to a new client framework
 
 The renderer pattern is the same across all frameworks:
 
-1. **Component registry** — map of `type` string to component/render function
-2. **Recursive renderer** — `renderLayout(content)` → iterate → dispatch by type
-3. **Data context** — reactive state + `setData(update)` → re-render changed fields
-4. **Implement components** — each ~20 lines. Start with containers (ROW, COL, FIELDSET), then inputs (INPUT, CHECKBOX, SELECT), then display (LABEL, ALERT).
+1. **Component registry** — map `type` string → component
+2. **Recursive renderer** — iterate `layout[]`, dispatch by type
+3. **Data context** — reactive state + `setData(id, value)`
+4. **Implement 17 components** — start with containers (ROW/COL/FIELDSET), then inputs, then display
 
-Reference implementation: `dynamiclayout-wc.js` — the framework-agnostic version. Works in any HTML page, testable with any PFDL JSON.
-
-All renderers produce the same visual output from identical JSON — the server doesn't know or care which client framework is consuming it.
+Reference: `dynamiclayout-wc.js` — framework-agnostic, works anywhere. All renderers produce identical visual output from the same JSON.
 
 ---
 
