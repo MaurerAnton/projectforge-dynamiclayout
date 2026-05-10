@@ -1,6 +1,6 @@
 # Architecture
 
-> **TL;DR:** Four ways to build UI — Kotlin DSL, C API, or JavaScript DSL generate JSON; HTTP transports it; React's `DynamicRenderer` recursively renders it into the DOM. [Open the playground](https://raw.githack.com/MaurerAnton/projectforge-dynamiclayout/master/playground/index.html) and write JsLayout code to see it live.
+> **TL;DR:** The DynamicLayout JSON format is generated from 42 languages (Kotlin, C, Go, Python, Rust, ..., Solidity). HTTP transports it to the browser, and React's `DynamicRenderer` recursively renders into the DOM. [Open the playground](https://raw.githack.com/MaurerAnton/projectforge-dynamiclayout/master/playground/index.html) and write code to see it live.
 
 ## Architecture layers
 
@@ -296,25 +296,56 @@ Key design decisions:
 
 > **Playground:** Switch the playground view to **⚙️ C** to see the C source for each preset. Paste the JSON from the playground into the React preview to verify it renders identically. The playground writes the same C API calls as `dynamiclayout.h` — it's a live reference for how each component maps from C to JSON.
 
-### Files
+### Files — 42 language SDKs
+
+All SDKs follow the same builder pattern, generate identical JSON, and have zero external dependencies.
 
 ```
-dynamiclayout.h           # C/C++ — single-header library (300 lines)
-dynamiclayout.go          # Go package (350 lines, stdlib only)
-dynamiclayout.py          # Python module (280 lines, stdlib only)
-dynamiclayout.lua         # Lua module (160 lines, embedded-ready)
-dynamiclayout.rb          # Ruby module (140 lines)
-dynamiclayout.php         # PHP class (120 lines)
-dynamiclayout.d           # D module (240 lines, Phobos only)
-dynamiclayout.zig         # Zig module (230 lines, stdlib only)
-dynamiclayout.nim         # Nim module (170 lines)
-dynamiclayout.ads/adb     # Ada spec + body (240 lines)
-DynamicLayout.cs          # C# class (150 lines, .NET 6+)
-DynamicLayout.swift       # Swift class (140 lines, iOS/macOS)
-Layout.java               # Java class (160 lines, Java 11+)
-Layout.kt                 # Kotlin class (160 lines, JVM/JS/Native)
-examples/go/go-example.go # Go example (5 scenarios)
+dynamiclayout.h           # C/C++ (300 lines)
+dynamiclayout-c89.h       # ANSI C89
+dynamiclayout.go          # Go (350 lines)
+dynamiclayout.py          # Python (280 lines)
+dynamiclayout.lua         # Lua (160 lines)
+dynamiclayout.rb          # Ruby (140 lines)
+dynamiclayout.php         # PHP (120 lines)
+dynamiclayout.d           # D (240 lines)
+dynamiclayout.zig         # Zig (230 lines)
+dynamiclayout.nim         # Nim (170 lines)
+dynamiclayout.ads/.adb    # Ada (240 lines)
+DynamicLayout.cs          # C# (150 lines)
+DynamicLayout.swift       # Swift (140 lines)
+Layout.java               # Java (160 lines)
+Layout.kt                 # Kotlin (160 lines)
+dynamiclayout.f90         # Fortran 2003 (250 lines)
+dynamiclayout.pl          # Perl (140 lines)
+dynamiclayout.R           # R (130 lines)
+dynamiclayout.erl         # Erlang (180 lines)
+dynamiclayout.exs         # Elixir (130 lines)
+dynamiclayout.ml          # OCaml (120 lines)
+DynamicLayout.scala       # Scala (110 lines)
+dynamiclayout.dart        # Dart (100 lines)
+dynamiclayout.ts          # TypeScript standalone (100 lines)
+dynamiclayout.v           # V (120 lines)
+dynamiclayout.cr          # Crystal (120 lines)
+DynamicLayout.hs          # Haskell (100 lines)
+dynamiclayout.lisp        # Common Lisp (160 lines)
+dynamiclayout.clj         # Clojure (120 lines)
+dynamiclayout.rkt         # Racket/Scheme (130 lines)
+DynamicLayout.groovy      # Groovy (130 lines)
+DynamicLayout.fs          # F# (100 lines)
+dynamiclayout.rs          # Rust (120 lines)
+dynamiclayout.jl          # Julia (140 lines)
+dynamiclayout.sh          # Bash (80 lines)
+dynamiclayout.tcl         # Tcl (80 lines)
+dynamiclayout.pas         # Free Pascal (140 lines)
+dynamiclayout.cbl         # GNU COBOL (120 lines)
+dynamiclayout.plg         # Prolog (100 lines)
+dynamiclayout.fth         # Forth (80 lines)
+DynamicLayout.sol         # Solidity (120 lines)
+DynamicLayout.vala        # Vala (120 lines)
+
 examples/cpp/             # C/C++ examples
+examples/go/              # Go example (5 scenarios)
 ```
 
 ### Porting to a new language
