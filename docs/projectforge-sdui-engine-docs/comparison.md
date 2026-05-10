@@ -6,10 +6,10 @@
 |--------|-------------|------|---------|---------|-----------------|--------|
 | **GitHub stars** | — | [~15 800](https://github.com/rjsf-team/react-jsonschema-form) | [~12 500](https://github.com/alibaba/formily) | [~8 900](https://github.com/SoftwareBrothers/adminjs) | [~890](https://github.com/apache/causeway) | [~2 600](https://github.com/divkit/divkit) |
 | **Type** | [Server framework](architecture.md) | [Client library](https://rjsf-team.github.io/react-jsonschema-form/docs/) | [Client library](https://formilyjs.org/) | [Server framework](https://docs.adminjs.co/) | [Server framework](https://causeway.apache.org/docs/) | [Client renderer](https://divkit.tech/doc) |
-| **Server language** | [Kotlin, C, JS](architecture.md) | [Any](https://rjsf-team.github.io/react-jsonschema-form/docs/#introduction) | [Any](https://formilyjs.org/) | [Node.js/TypeScript](https://docs.adminjs.co/installation/getting-started) | [Java](https://causeway.apache.org/docs/latest/starters/simpleapp/) | [Any](https://divkit.tech/doc#for-server-developer) |
+| **Server language** | [42 languages](architecture.md) | [Any](https://rjsf-team.github.io/react-jsonschema-form/docs/#introduction) | [Any](https://formilyjs.org/) | [Node.js/TypeScript](https://docs.adminjs.co/installation/getting-started) | [Java](https://causeway.apache.org/docs/latest/starters/simpleapp/) | [Any](https://divkit.tech/doc#for-server-developer) |
 | **Client language** | [React](https://github.com/MaurerAnton/projectforge-dynamiclayout/tree/master/projectforge-webapp) | [React](https://github.com/rjsf-team/react-jsonschema-form) | [React/Vue](https://formilyjs.org/guide/quick-start) | [React](https://github.com/SoftwareBrothers/adminjs/tree/master/src/frontend) | [Wicket](https://causeway.apache.org/docs/latest/viewers/wicket/about/) | [Native + Web](https://github.com/divkit/divkit) |
 | **Full SDUI** | [✅ Yes](architecture.md) | ❌ Forms only | ❌ Forms only | ⚠️ CRUD | [✅ Yes](https://causeway.apache.org/) | [✅ Yes](https://divkit.tech/) |
-| **UI generation** | [Explicit (Kotlin/C/JS DSL)](architecture.md) | [From JSON Schema](https://rjsf-team.github.io/react-jsonschema-form/docs/usage/schema) | [From JSON Schema](https://formilyjs.org/guide/learn-formily) | [From metadata](https://docs.adminjs.co/basics/resource) | [Reflection (auto)](https://causeway.apache.org/docs/latest/core/overview/) | [From DivJson](https://divkit.tech/schema) |
+| **UI generation** | [Explicit (42-language DSL)](architecture.md) | [From JSON Schema](https://rjsf-team.github.io/react-jsonschema-form/docs/usage/schema) | [From JSON Schema](https://formilyjs.org/guide/learn-formily) | [From metadata](https://docs.adminjs.co/basics/resource) | [Reflection (auto)](https://causeway.apache.org/docs/latest/core/overview/) | [From DivJson](https://divkit.tech/schema) |
 | **Custom pages** | [Full control](examples.md) | ❌ Not possible | ❌ Not possible | [⚠️ Via components](https://docs.adminjs.co/ui-customization/writing-your-own-components) | [⚠️ Via XML/Wicket](https://causeway.apache.org/docs/latest/userguide/layout/) | [Via JSON](https://divkit.tech/doc) |
 | **Bootstrap grid** | [✅ Row/Col + Fieldset](pipeline.md) | ⚠️ [uiSchema](https://rjsf-team.github.io/react-jsonschema-form/docs/api-reference/uiSchema) layout | ⚠️ [FormGrid](https://formilyjs.org/zh-CN/components/form-grid) | ✅ [Design system](https://docs.adminjs.co/ui-customization/adminjs-design-system) | ⚠️ [XML layout](https://causeway.apache.org/docs/latest/userguide/layout/) | Custom containers |
 | **Enterprise table** | [✅ AgGrid built-in](architecture.md) | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -454,18 +454,16 @@ DivKit is a **mobile-first SDUI** framework with native rendering on iOS/Android
 
 ### What is this
 
-Server-Driven UI framework built into the ProjectForge platform. Provides **three ways** to generate UI: Kotlin DSL (production), C99 API (`dynamiclayout.h` — single header, 300 lines), and JavaScript DSL (`JsLayout` — live in-browser). All three produce the same JSON; the React client (`DynamicRenderer`) renders it recursively.
+Server-Driven UI framework built into the ProjectForge platform. JSON format with **42 SDKs** — from Kotlin (production) and C89 (embedded) to Solidity (EVM) and Fortran (HPC). All produce the same JSON; the React client (`DynamicRenderer`) renders it.
 
 ```
-Kotlin DSL → JSON (Gson) → DynamicRenderer (React) → DOM
-C99 API   → JSON ────────→ DynamicRenderer (React) → DOM
-JsLayout  → JSON ────────→ DynamicRenderer (React) → DOM
+42 language SDKs → identical JSON → DynamicRenderer (React) → DOM
 ```
 
 ### How it works
 
 ```kotlin
-// Kotlin DSL (production, Spring Boot)
+// Kotlin DSL (production, Spring Boot + JPA + i18n)
 val layout = UILayout("user.edit")
 layout.add(UIFieldset("user.details").add(
   UIInput(id = "name", maxLength = 50),
@@ -475,36 +473,35 @@ layout.addAction(UIButton.createSaveButton("save"))
 ```
 
 ```c
-// C API (embedded, microcontrollers)
-#include "dynamiclayout.h"
+// C89 API (embedded, microcontrollers)
+#include "dynamiclayout-c89.h"
 char buf[8192]; DL b = dl_begin(buf, sizeof(buf), "Device Diagnostics");
 dl_fieldset(&b, "Configuration");
-dl_input(&b, "name", "Device Name");
-dl_button(&b, "save", "Save", "primary");
-dl_end(&b); // buf now contains valid DynamicLayout JSON
+dl_input(&b, "name", "Device Name", 1);
+dl_button(&b, "save", "Save", "primary", 1);
+dl_end(&b);
 ```
 
-```js
-// JsLayout DSL (playground, prototyping)
-const page = new JsLayout('Feedback');
-page.fieldset('Your Details');
-page.input('name', 'Name');
-page.input('email', 'Email');
-page.endFieldset();
-page.button('send', 'Send', 'primary', true);
-page.toJSON();
+```python
+# Python (any backend)
+from dynamiclayout import Layout
+page = Layout('Feedback')
+page.fieldset('Your Details').input('name', 'Name', required=True)
+page.input('email', 'Email', required=True).end()
+page.button('send', 'Send', 'primary', default=True)
+print(page.json())
 ```
 
-All three produce the same `{type, key, ...}` JSON — the React client doesn't care where the JSON came from.
+All 42 SDKs produce the same `{type, key, ...}` JSON — the React client doesn't care where it came from.
 
 ### Key numbers
 
 - [ProjectForge](https://projectforge.org/) — proprietary enterprise framework
 - [30 registered components](https://github.com/MaurerAnton/projectforge-dynamiclayout) in `DynamicRenderer`
 - 33 `UIElementType` values, [59 Kotlin UI files](https://github.com/MaurerAnton/projectforge-dynamiclayout/tree/master/projectforge-rest), [90 React components](https://github.com/MaurerAnton/projectforge-dynamiclayout/tree/master/projectforge-webapp)
-- [dynamiclayout.h](https://github.com/MaurerAnton/projectforge-dynamiclayout/blob/master/dynamiclayout.h) — single-header C99/C++98 library (300 lines, zero deps)
-- [JsLayout](https://github.com/MaurerAnton/projectforge-dynamiclayout/blob/master/playground/index.html) — live JavaScript DSL (90 lines) for playground/prototyping
-- Stack: [Kotlin](https://kotlinlang.org/) / [C99](https://en.wikipedia.org/wiki/C99) / [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) → [JSON](https://www.json.org/) → [React](https://react.dev/)
+- [dynamiclayout.h](https://github.com/MaurerAnton/projectforge-dynamiclayout/blob/master/dynamiclayout.h) — single-header C99/C++98 library (300 lines, zero deps) + [41 more SDKs](https://github.com/MaurerAnton/projectforge-dynamiclayout) (Go, Python, Rust, Java, C#, Swift, Zig, Fortran, COBOL, Solidity…)
+- [JsLayout](https://github.com/MaurerAnton/projectforge-dynamiclayout/blob/master/playground/index.html) — live JavaScript DSL for playground/prototyping
+- Stack: any language → [JSON](https://www.json.org/) → [React](https://react.dev/)
 - [GPLv3 license](https://github.com/MaurerAnton/projectforge-dynamiclayout/blob/master/LICENSE)
 
 ### When to choose ProjectForge
@@ -518,7 +515,7 @@ All three produce the same `{type, key, ...}` JSON — the React client doesn't 
 ### When NOT to choose
 
 - Need forms only — [RJSF](#1-rjsf-react-jsonschema-form) or [JSON Forms](#2-json-forms-eclipsesource) are simpler
-- Node.js/Python/Go backend — production Kotlin layer is JVM-centric (though [C API](https://github.com/MaurerAnton/projectforge-dynamiclayout/blob/master/dynamiclayout.h) enables embedded/native generation)
+- Node.js/Python/Go backend — any language can [generate JSON](https://github.com/MaurerAnton/projectforge-dynamiclayout) (42 SDKs), but production enterprise features (JPA, Spring Security, i18n) are JVM-only
 - Mobile apps — [DivKit](#5-divkit-yandex) handles iOS/Android natively
 - SEO required — client-rendered only, no server-side HTML
 - Small forms or quick prototypes — overkill for simple use cases
@@ -550,7 +547,7 @@ All three produce the same `{type, key, ...}` JSON — the React client doesn't 
 
 ### Key difference
 
-ProjectForge is the **only framework** in this comparison that combines: full SDUI (server controls everything) + Kotlin/Spring native integration + enterprise table ([AgGrid](https://ag-grid.com/)) + complete form system (30+ UI components) + server-side validation and access control + **multi-language generation** (Kotlin, C99, JavaScript) — all over a single JSON contract.
+ProjectForge is the **only framework** in this comparison that combines: full SDUI (server controls everything) + Kotlin/Spring native integration + enterprise table ([AgGrid](https://ag-grid.com/)) + complete form system (30+ UI components) + server-side validation and access control + **42 language SDKs** generating identical JSON.
 
 ---
 
@@ -637,7 +634,7 @@ DynamicRenderer is tied to React. Unlike JSON Forms (React + Angular + Vue) or D
 - Need **full SDUI** — server controls not just data but layout, actions, and validation
 - Complex forms + enterprise tables (AgGrid) + custom page layouts
 - Server-side validation and access control built into UI
-- Multiple language targets — generate JSON from Kotlin (production), C (embedded), or JavaScript (prototyping)
+- Multiple language targets — generate JSON from [42 language SDKs](architecture.md) (Kotlin production, C embedded, Python/Rust/Go backends, Fortran HPC)
 
 ### When to consider alternatives
 
