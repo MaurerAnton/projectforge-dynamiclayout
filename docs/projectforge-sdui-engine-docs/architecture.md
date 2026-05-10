@@ -1,12 +1,12 @@
 # Architecture
 
-> **TL;DR:** Three layers — Kotlin DSL on the server defines the UI, JSON carries it over HTTP, and React's `DynamicRenderer` recursively renders it into the DOM. [Open the playground](https://raw.githack.com/MaurerAnton/projectforge-dynamiclayout/master/playground/index.html) and paste any JSON from this doc to see it live.
+> **TL;DR:** Four paths to UI — Kotlin DSL or C/C++ API generates JSON, HTTP transports it, and React's `DynamicRenderer` recursively renders it into the DOM. [Open the playground](https://raw.githack.com/MaurerAnton/projectforge-dynamiclayout/master/playground/index.html) and paste any JSON from this doc to see it live.
 
-## Three layers
+## Architecture layers
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  LAYER 1: Kotlin DSL (server)                                        │
+│  LAYER 1a: Kotlin DSL (server)                                       │
 │                                                                      │
 │  AbstractPagesRest                                                   │
 │    └─ createEditLayout() / getForm()                                 │
@@ -17,6 +17,17 @@
 │    ├─ addCommonTranslations()                                         │
 │    ├─ processAllElements() — keys, translations, auto-detection      │
 │    └─ ready UILayout with translations, userAccess, uid              │
+├──────────────────────────────────────────────────────────────────────┤
+│  LAYER 1b: C/C++ API (any platform)                                  │
+│                                                                      │
+│  #include "dynamiclayout.h"                                          │
+│  char buf[8192];                                                     │
+│  DL b = dl_begin(buf, sizeof(buf), "My Page");                      │
+│  dl_fieldset(&b, "Section");                                        │
+│  dl_input(&b, "name", "Name");                                      │
+│  dl_button(&b, "save", "Save", "primary");                          │
+│  dl_end(&b);                                                         │
+│  // buf now contains valid DynamicLayout JSON                       │
 └──────────────────────────────────────────────────────────────────────┘
                                     │
                                     │ GET /rs/<category>/dynamic
@@ -52,7 +63,7 @@
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-The three-layer diagram above maps exactly to how you build in the playground: you write Layer-2 JSON (left pane) and Layer 3 renders it instantly (right pane). In production, Layer 1 (Kotlin) generates the JSON automatically.
+The diagram above maps exactly to how you build in the playground: you write JSON (left pane) and it renders instantly (right pane). In production, the Kotlin DSL or C API generates the JSON automatically.
 
 ---
 
@@ -157,6 +168,143 @@ data class UIInput(
 ```
 
 > **Playground:** Open the playground and load the "All Components" preset. Switch to the "Kotlin" view to see the Kotlin DSL code that would produce that exact JSON layout. You can edit the JSON and observe how each change would affect the Kotlin source.
+
+---
+
+## 1b. C/C++ API (`dynamiclayout.h`)
+
+For non-JVM environments, DynamicLayout provides a **single-header C99/C++98 library** that generates the exact same JSON. No dependencies beyond `stdio.h`, `string.h`, `stdlib.h`. Works on embedded systems, microcontrollers, game engines — anything that can `#include` and `printf`.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  char buf[8192];                                                 │
+│  DL b = dl_begin(buf, sizeof(buf), "My Page");                  │
+│                                                                  │
+│  dl_fieldset(&b, "Info");     →  "type": "FIELDSET"              │
+│  dl_input(&b, "name", "Name") →  "type": "INPUT"                 │
+│  dl_end_fieldset(&b);         →  close FIELDSET container        │
+│                                                                  │
+│  dl_end(&b);                  →  finalize JSON, null-terminate   │
+│  puts(buf);                   →  send to client                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Why C?
+
+The Kotlin DSL is powerful but ties you to the JVM. The C API lets **any** programming language or platform generate DynamicLayout JSON:
+
+- **Embedded devices** — render UI for a tiny display from a microcontroller
+- **Game engines** — C++ game engine builds settings dialogs via `dynamiclayout.h`
+- **Native mobile** — Swift/Kotlin-native apps call the C API through FFI  
+- **Non-JVM backends** — Go, Python, Rust, Node.js (all can call C via FFI)
+
+The JSON output is identical regardless of generator — the React renderer doesn't care whether the JSON came from Kotlin or C.
+
+### API coverage
+
+`dynamiclayout.h` provides a structured builder API (state-based, push/pop for nesting):
+
+| C function | Generates | Kotlin equivalent |
+|-----------|-----------|-------------------|
+| `dl_begin(buf, sz, title)` | `{"ui":{"title":"...","layout":[` | `UILayout("title")` |
+| `dl_end(&b)` | Closes layout, adds `translations` + `userAccess` | `Gson.toJson(layout)` |
+| `dl_fieldset(&b, title)` | Open `{"type":"FIELDSET","title":"...","content":[` | `UIFieldset(title)` |
+| `dl_end_fieldset(&b)` | Close FIELDSET | Method chain end |
+| `dl_row(&b)` / `dl_end_row(&b)` | Open/close `{"type":"ROW","content":[` | `UIRow()` |
+| `dl_col(&b, xs, md)` / `dl_end_col(&b)` | Open/close COL with Bootstrap sizes | `UICol(UILength(xs, md))` |
+| `dl_label(&b, text)` | `{"type":"LABEL","label":"text"}` | `UILabel("text")` |
+| `dl_input(&b, id, label)` | `{"type":"INPUT","id":"...","label":"..."}` | `UIInput(id, label)` |
+| `dl_textarea(&b, id, label, rows)` | `{"type":"TEXTAREA","id":"...","rows":N}` | `UITextArea(id)` |
+| `dl_checkbox(&b, id, label)` | `{"type":"CHECKBOX","id":"..."}` | `UICheckbox(id)` |
+| `dl_select(&b, id, label, ids, labels, n)` | `{"type":"SELECT","values":[...]}` | `UISelect(id, values)` |
+| `dl_button(&b, id, title, color)` | `{"type":"BUTTON","id":"...","color":"..."}` | `UIButton(id, color)` |
+| `dl_alert(&b, msg, color)` | `{"type":"ALERT","message":"..."}` | `UIAlert(msg, color)` |
+| `dl_badge(&b, title, color)` | `{"type":"BADGE","title":"..."}` | `UIBadge(title, color)` |
+| `dl_section(&b, title, text)` | FIELDSET + LABEL combo | Manually combined |
+| `dl_feedback_form(&b)` | Pre-built form with name/email/message | Manual assembly |
+
+### Full example — embedded device diagnostics page
+
+```c
+#include "dynamiclayout.h"
+
+int main() {
+    char json[4096];
+    DL b = dl_begin(json, sizeof(json), "Device Diagnostics");
+
+    dl_fieldset(&b, "System");
+    dl_label(&b, "CPU: ARM Cortex-M4 @ 180 MHz");
+    dl_label(&b, "Memory: 512 KB free / 1 MB total");
+    dl_label(&b, "Uptime: 14 days 3 hours");
+    dl_end_fieldset(&b);
+
+    dl_fieldset(&b, "Configuration");
+    dl_input(&b, "device_name", "Device Name");
+    dl_input(&b, "mqtt_broker", "MQTT Broker");
+    dl_select(&b, "log_level", "Log Level",
+        (const char*[]){"debug","info","warn","error"},
+        (const char*[]){"Debug","Info","Warning","Error"}, 4);
+    dl_end_fieldset(&b);
+
+    dl_actions(&b);
+    dl_button(&b, "reboot", "Reboot", "danger");
+    dl_button(&b, "save", "Save Config", "primary");
+    dl_end_actions(&b);
+
+    dl_end(&b);
+    printf("%s\n", json);
+    return 0;
+}
+```
+
+This produces JSON that the React `DynamicRenderer` can render without modification:
+
+```json
+{
+  "ui": {
+    "title": "Device Diagnostics",
+    "layout": [
+      { "type": "FIELDSET", "title": "System", "content": [
+        { "type": "LABEL", "label": "CPU: ARM Cortex-M4 @ 180 MHz" },
+        { "type": "LABEL", "label": "Memory: 512 KB free / 1 MB total" }
+      ]},
+      { "type": "FIELDSET", "title": "Configuration", "content": [
+        { "type": "INPUT", "id": "device_name", "label": "Device Name" },
+        { "type": "SELECT", "id": "log_level", "values": [...] }
+      ]}
+    ],
+    "actions": [
+      { "type": "BUTTON", "id": "reboot", "title": "Reboot", "color": "danger" },
+      { "type": "BUTTON", "id": "save", "title": "Save Config", "color": "primary" }
+    ],
+    "translations": {},
+    "userAccess": { "cancel": true }
+  }
+}
+```
+
+### How it works
+
+The API is **builder-state-based**: `DL` struct tracks the current write position, nesting depth, and comma placement. Opening a container (fieldset/row/col/actions) pushes a level; closing pops it. Escape handling for strings (`"`, `\n`, `\\`) is built in.
+
+Key design decisions:
+- **No allocations** — works on a pre-allocated buffer. Zero `malloc`.
+- **Null-terminated output** — `dl_end()` adds `\0`, making `buf` a valid C string.
+- **Indentation** — output is pretty-printed with 2-space indent for debugging.
+- **Automatic comma placement** — the builder tracks whether a comma is needed before the next key/value pair.
+- **Single header** — one `#include`, zero build system dependencies.
+
+> **Playground:** Switch the playground view to **⚙️ C** to see the C source for each preset. Paste the JSON from the playground into the React preview to verify it renders identically. The playground writes the same C API calls as `dynamiclayout.h` — it's a live reference for how each component maps from C to JSON.
+
+### Files
+
+```
+dynamiclayout.h           # Single-header C library (300 lines)
+examples/cpp/
+├── c-example.c           # Pure C99 example
+├── cpp-example.cpp       # C++ example
+└── demo.c                # Interactive C demo
+```
 
 ---
 
@@ -548,16 +696,24 @@ registry["User.email"] = ElementInfo(
 
 When building a layout, developers call `ElementsRegistry.get("User.email")` to auto-fill `UIInput` properties. This is what `createEditLayout()` uses — it creates a complete edit form from JPA metadata with zero manual field configuration.
 
+### 5. Language-agnostic JSON contract
+
+The JSON format is the stable interface. Any language can generate it — Kotlin (Gson), C (`dynamiclayout.h`), or hand-written JSON. The React client only cares about `{type, key, ...}`. This is why:
+- The playground can render JSON you paste manually
+- The C API on an embedded device outputs the same JSON as a Spring Boot server
+- A Go/Python/Rust backend could generate JSON without touching any JVM code
+- `dynamiclayout.h` proves the concept: 300 lines of C, zero dependencies, same output
+
 ---
 
 ## Summary
 
-| Concept | Server (Kotlin) | Transport (JSON) | Client (React) |
-|---------|----------------|------------------|----------------|
-| **Layout** | `UILayout`, `UIRow`, `UICol`, `UIFieldset` | `layout[]` array of elements | `DynamicRenderer` + container components |
-| **Form fields** | `UIInput(id, dataType, required, maxLength)` | `{type:"INPUT", id:"email", dataType:"STRING"}` | `DynamicInputResolver` dispatches by dataType |
-| **Actions** | `UIButton(id, responseAction)` | `{type:"BUTTON", id:"save", responseAction:{...}}` | `DynamicButton` → `callAction()` |
-| **Validation** | `ValidationError(fieldId, message)` from Spring | `validationErrors[]` in response | `DynamicValidationManager` binds to fields |
-| **i18n** | `I18nHelper.translate(key)` | `translations: {"key":"Value"}` | Read from context, never translate |
-| **Access** | Spring Security → `userAccess{}` map | `userAccess: {update:true, delete:false}` | Show/hide buttons |
-| **Data** | Entity objects (JPA) | `data: {id:..., email:...}` | `DynamicLayoutContext → data[id]` |
+| Concept | Generator (Kotlin) | Generator (C) | Transport (JSON) | Renderer (React) |
+|---------|-------------------|---------------|------------------|-------------------|
+| **Layout** | `UILayout`, `UIRow`, `UICol`, `UIFieldset` | `dl_fieldset()`, `dl_row()`, `dl_col()` | `layout[]` array of elements | `DynamicRenderer` + container components |
+| **Form fields** | `UIInput(id, dataType, required, maxLength)` | `dl_input()`, `dl_textarea()`, `dl_checkbox()` | `{type:"INPUT", id:"email"}` | `DynamicInputResolver` dispatches by dataType |
+| **Actions** | `UIButton(id, responseAction)` | `dl_button()`, `dl_actions()` | `{type:"BUTTON", responseAction:{...}}` | `DynamicButton` → `callAction()` |
+| **Validation** | `ValidationError(fieldId, message)` from Spring | N/A (client renders errors from JSON) | `validationErrors[]` in response | `DynamicValidationManager` binds to fields |
+| **i18n** | `I18nHelper.translate(key)` | N/A (hardcoded strings) | `translations: {"key":"Value"}` | Read from context, never translate |
+| **Access** | Spring Security → `userAccess{}` map | N/A (hardcoded `userAccess`) | `userAccess: {update:true}` | Show/hide buttons |
+| **Data** | Entity objects (JPA) | Raw JSON strings | `data: {id:..., email:...}` | `DynamicLayoutContext → data[id]` |
