@@ -8,7 +8,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -114,7 +119,7 @@ class MainActivity : ComponentActivity() {
 
 data class Contact(
     val id: String, val name: String, val phone: String = "", val email: String = "",
-    val org: String = "", val addr: String = "", val note: String = "", val website: String = ""
+    val org: String = "", val addr: String = "", val note: String = "", val photo: ByteArray? = null
 )
 
 @Composable fun ContactsPage(ctx: android.content.Context, onBack: () -> Unit, reload: () -> Unit) {
@@ -172,8 +177,19 @@ data class Contact(
                 contacts.take(20).forEach { c ->
                     Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                         Column(Modifier.padding(12.dp)) {
-                            Text(c.name, fontWeight = FontWeight.SemiBold)
-                            if (c.phone.isNotBlank()) Text("Phone: ${c.phone}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (c.photo != null) {
+                                    val bmp = remember(c.photo) { BitmapFactory.decodeByteArray(c.photo, 0, c.photo!!.size) }
+                                    if (bmp != null) Image(bitmap = bmp.asImageBitmap(), contentDescription = null,
+                                        modifier = Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape))
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                Text(c.name, fontWeight = FontWeight.SemiBold)
+                            }
+                            if (c.phone.isNotBlank()) Text("📞 ${c.phone}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            if (c.email.isNotBlank()) Text("✉ ${c.email}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            if (c.org.isNotBlank()) Text("🏢 ${c.org}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            if (c.addr.isNotBlank()) Text("📍 ${c.addr}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         }
                     }
                 }
@@ -247,6 +263,10 @@ private fun loadContactsFull(ctx: android.content.Context): List<Contact> {
         val idIdx = cur.getColumnIndex(android.provider.ContactsContract.Data.CONTACT_ID)
         val d1Idx = cur.getColumnIndex(android.provider.ContactsContract.Data.DATA1)
         if (idIdx >= 0 && d1Idx >= 0) while (cur.moveToNext()) { val cid = cur.getString(idIdx) ?: continue; idx[cid]?.let { c -> if (c.addr.isBlank()) idx[cid] = c.copy(addr = cur.getString(d1Idx) ?: "") } }
+    }
+    // Photos
+    for (c in idx.values.toList()) {
+        try { val uri = android.provider.ContactsContract.Contacts.getLookupUri(c.id.toLongOrNull() ?: continue, null) ?: continue; val stream = android.provider.ContactsContract.Contacts.openContactPhotoInputStream(ctx.contentResolver, uri, true); if (stream != null) { val bytes = stream.readBytes(); stream.close(); if (bytes.isNotEmpty()) idx[c.id] = c.copy(photo = bytes) } } catch (_: Exception) {}
     }
     return idx.values.toList()
 }
