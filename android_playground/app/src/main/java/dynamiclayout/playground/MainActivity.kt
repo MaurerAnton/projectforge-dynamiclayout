@@ -154,7 +154,7 @@ fun DynamicLayout(
 
         val actions = spec["actions"] as? List<*>
         if (!actions.isNullOrEmpty()) {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            Divider(modifier = Modifier.padding(vertical = 12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 actions.forEach { el ->
                     RenderEl((el as? Map<String, Any?>) ?: emptyMap(), state, onUpdate, onAction)
