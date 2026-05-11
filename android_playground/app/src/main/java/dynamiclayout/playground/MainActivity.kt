@@ -247,53 +247,26 @@ data class Contact(val id: String, val name: String, val phone: String = "", val
 object Contacts {
     fun load(context: android.content.Context): List<Contact> {
         val contacts = mutableListOf<Contact>()
-        val uri = android.provider.ContactsContract.Data.CONTENT_URI
-        val proj = arrayOf(
-            android.provider.ContactsContract.Data.CONTACT_ID,
-            android.provider.ContactsContract.Data.DISPLAY_NAME,
-            android.provider.ContactsContract.Data.MIMETYPE,
-            android.provider.ContactsContract.Data.DATA1
-        )
-        val sel = "${android.provider.ContactsContract.Data.MIMETYPE} IN (?,?,?,?)"
-        val selArgs = arrayOf(
-            android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
-            android.provider.ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE,
-            android.provider.ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE,
-            android.provider.ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE
-        )
-
-        val cursor = context.contentResolver.query(uri, proj, sel, selArgs, null)
-        if (cursor == null) return contacts
-
-        cursor.use {
-            val idIdx = it.getColumnIndex(proj[0]); val nmIdx = it.getColumnIndex(proj[1])
-            val mtIdx = it.getColumnIndex(proj[2]); val d1Idx = it.getColumnIndex(proj[3])
-            if (idIdx < 0 || nmIdx < 0) return contacts
-
-            val map = linkedMapOf<String, Contact>()
-            while (it.moveToNext() && map.size < 20) {
-                val cid = it.getString(idIdx) ?: continue
-                val name = it.getString(nmIdx) ?: "Unknown"
-                val mime = it.getString(mtIdx) ?: continue
-                val contact = map.getOrPut(cid) { Contact(cid, name) }
-                val data = it.getString(d1Idx) ?: ""
-
-                when {
-                    mime == android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE
-                        && data.isNotBlank() && contact.phone.isBlank() ->
-                        map[cid] = contact.copy(phone = data)
-                    mime == android.provider.ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE
-                        && data.isNotBlank() && contact.email.isBlank() ->
-                        map[cid] = contact.copy(email = data)
-                    mime == android.provider.ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE
-                        && data.isNotBlank() && contact.organization.isBlank() ->
-                        map[cid] = contact.copy(organization = data)
-                    mime == android.provider.ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE
-                        && data.isNotBlank() && contact.note.isBlank() ->
-                        map[cid] = contact.copy(note = data)
+        try {
+            val uri = android.provider.ContactsContract.Contacts.CONTENT_URI
+            val cursor = context.contentResolver.query(uri, null, null, null, "${android.provider.ContactsContract.Contacts.DISPLAY_NAME} ASC")
+            if (cursor == null) return contacts
+            cursor.use {
+                val idIdx = it.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
+                val nmIdx = it.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
+                val hasPhoneIdx = it.getColumnIndex(android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER)
+                if (idIdx < 0 || nmIdx < 0) return contacts
+                while (it.moveToNext() && contacts.size < 20) {
+                    contacts.add(Contact(
+                        id = it.getString(idIdx) ?: "",
+                        name = it.getString(nmIdx) ?: "Unknown",
+                        phone = if (hasPhoneIdx >= 0 && it.getInt(hasPhoneIdx) > 0) "Has phone" else ""
+                    ))
                 }
             }
-            contacts.addAll(map.values.sortedBy { it.name.lowercase() })
+        } catch (e: Exception) {
+            contacts.add(Contact("err", "Error: ${e.javaClass.simpleName}", e.message ?: ""))
+
         }
         return contacts
     }
