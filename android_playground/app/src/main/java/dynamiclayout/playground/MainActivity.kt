@@ -80,33 +80,3 @@ fun ContactsView(context: android.content.Context, loadKey: Int, onReload: () ->
     }
 }
 
-// Minimal Contacts loader
-object ContactsLoader {
-    data class Contact(val id: String, val name: String, val phone: String, val email: String)
-    fun load(context: android.content.Context, filter: String = ""): List<Contact> {
-        val contacts = mutableListOf<Contact>()
-        try {
-            val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-            val proj = arrayOf(
-                android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
-            )
-            val cursor = context.contentResolver.query(uri, proj, null, null, null)
-            if (cursor == null) return contacts
-            cursor.use {
-                val idIdx = it.getColumnIndex(proj[0])
-                val nmIdx = it.getColumnIndex(proj[1])
-                val phIdx = it.getColumnIndex(proj[2])
-                if (idIdx < 0 || nmIdx < 0) return contacts
-                val seen = hashSetOf<String>()
-                while (it.moveToNext() && contacts.size < 20) {
-                    val cid = it.getString(idIdx) ?: continue
-                    if (!seen.add(cid)) continue
-                    contacts.add(Contact(cid, it.getString(nmIdx) ?: "?", it.getString(phIdx) ?: "", ""))
-                }
-            }
-        } catch (_: Exception) {}
-        return contacts
-    }
-}
