@@ -119,8 +119,6 @@ data class Contact(
     val org: String = "", val addr: String = "", val note: String = "", val photo: ByteArray? = null,
     val phoneTypes: Map<String, String> = emptyMap() // phone -> icon label
 )
-)
-
 @Composable fun ContactsPage(ctx: android.content.Context, onBack: () -> Unit, reload: () -> Unit) {
     var step by remember { mutableStateOf(1) }
     var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
