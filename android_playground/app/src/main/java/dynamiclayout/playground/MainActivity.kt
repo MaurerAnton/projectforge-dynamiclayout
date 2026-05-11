@@ -186,47 +186,6 @@ data class Contact(val id: String, val name: String, val phone: String = "")
         }
         else -> {}
     }
-                    }
-                    Spacer(Modifier.height(24.dp))
-                    Button(onClick = { step = 2 }) { Text("Step 2: Load real contacts") }
-                    OutlinedButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) { Text("Back") }
-                }
-            }
-        }
-        2 -> { // Step 2: loading
-            Box(Modifier.fillMaxSize()) {
-                Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(8.dp))
-                    Text("Loading contacts...")
-                    if (err != null) {
-                        Spacer(Modifier.height(16.dp))
-                        Text(err ?: "", color = MaterialTheme.colorScheme.error)
-                        Button(onClick = { step = 1; err = null }) { Text("Back to test") }
-                    }
-                }
-            }
-        }
-        3 -> { // Step 3: show contacts
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Contacts (${contacts.size})", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    OutlinedButton(onClick = onBack) { Text("Back") }
-                }
-                Spacer(Modifier.height(12.dp))
-                contacts.take(20).forEach { c ->
-                    Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(c.name, fontWeight = FontWeight.SemiBold)
-                            if (c.phone.isNotBlank()) Text("Phone: ${c.phone}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = reload) { Text("Refresh") }
-            }
-        }
-    }
 }
 
 private fun loadContacts(ctx: android.content.Context): List<Contact> {
