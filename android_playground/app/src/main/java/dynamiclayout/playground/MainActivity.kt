@@ -65,15 +65,15 @@ class MainActivity : ComponentActivity() {
     if (page == "menu") {
         Box(Modifier.fillMaxSize()) {
             Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("DynamicLayout Demo", style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.height(16.dp))
-                Text("Renderer is working. Choose:", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(24.dp))
-                Button(onClick = { page = "demo" }) { Text("Show Demo Render") }
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = { page = "contacts" }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF198754))) {
-                    Text("Render My Contacts (step by step)")
-                }
+                Text("DynamicLayout Demo", style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(16.dp))
+                Text("Choose:", style = MaterialTheme.typography.bodyMedium); Spacer(Modifier.height(24.dp))
+                Button(onClick = { page = "demo" }) { Text("Show Demo Render") }; Spacer(Modifier.height(12.dp))
+                Button(onClick = { page = "contacts" }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF198754))) { Text("Render My Contacts (debug)") }
+            }
+            Text("build 29", style = MaterialTheme.typography.labelSmall, color = Color.Gray,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
+        }
+    }
             }
         }
         return
