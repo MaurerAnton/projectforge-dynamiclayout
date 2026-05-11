@@ -91,27 +91,32 @@ data class Contact(val id: String, val name: String, val phone: String = "")
     var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
     var err by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(step) {
-        if (step !in 21..24) return@LaunchedEffect
-        try { contacts = when (step) {
-            21 -> emptyList()
-            22 -> { withContext(Dispatchers.IO) { ctx.contentResolver.query(android.provider.ContactsContract.Contacts.CONTENT_URI, null, null, null, null)?.close() }; emptyList() }
-            23 -> { val c = withContext(Dispatchers.IO) { ctx.contentResolver.query(android.provider.ContactsContract.Contacts.CONTENT_URI, null, null, null, null) }; val list = mutableListOf<Contact>(); c?.use { val ii = it.getColumnIndex(android.provider.ContactsContract.Contacts._ID); val ni = it.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME); if (ii >= 0 && ni >= 0 && it.moveToFirst()) list.add(Contact(it.getString(ii)?:"", it.getString(ni)?:"?")) }; list }
-            24 -> withContext(Dispatchers.IO) { loadContacts(ctx) }
-            else -> emptyList()
-        }; step++ } catch (t: Throwable) { err = "${t.javaClass.simpleName}: ${t.message}" }
-    }
+    LaunchedEffect(step) { /* unused */ }
 
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        when (step) {
-            1 -> { Text("Step 1: Render test", style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(16.dp))
+        if (err != null) { Text("Error: ${err}", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 8.dp)) }
+    when (step) {
+        1 -> { Text("Step 1: Render test", style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(8.dp))
                 Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) { Column(Modifier.padding(12.dp)) { Text("Test Contact", fontWeight = FontWeight.SemiBold); Text("Phone: +1 234 567", style = MaterialTheme.typography.bodySmall, color = Color.Gray) } }
-                Spacer(Modifier.height(24.dp)); Button(onClick = { step = 21 }) { Text("Step 2: Load contacts") }
+                Spacer(Modifier.height(24.dp))
+                Button(onClick = {
+                    try { contacts = emptyList(); step = 22 } catch (t: Throwable) { err = t.message }
+                }) { Text("Step 2a: Create empty list") }
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = {
+                    try { ctx.contentResolver.query(android.provider.ContactsContract.Contacts.CONTENT_URI, null, null, null, null)?.close(); step = 23 } catch (t: Throwable) { err = t.message }
+                }) { Text("Step 2b: Open cursor + close") }
                 OutlinedButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) { Text("Back") } }
-            21 -> DebugStep("2a: Create empty list", "Creates emptyList<Contact>() — no ContentResolver")
-            22 -> DebugStep("2b: Open cursor (no read)", "Calls query() then close() — no column access")
-            23 -> DebugStep("2c: Read 1st contact", "moveToFirst(), reads _ID + DISPLAY_NAME")
-            24 -> DebugStep("2d: Read all contacts", "Loops through cursor, up to 20 contacts")
+            22 -> { Text("Step 2a: Empty list — OK (${contacts.size})", style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(8.dp))
+                Button(onClick = { try { ctx.contentResolver.query(android.provider.ContactsContract.Contacts.CONTENT_URI, null, null, null, null)?.close(); step = 23 } catch (t: Throwable) { err = t.message } }) { Text("Step 2b: Open + close cursor") } }
+            23 -> { Text("Step 2b: Cursor OK", style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(8.dp))
+                Button(onClick = {
+                    try { val c = ctx.contentResolver.query(android.provider.ContactsContract.Contacts.CONTENT_URI, null, null, null, null); val list = mutableListOf<Contact>(); c?.use { val ii = it.getColumnIndex(android.provider.ContactsContract.Contacts._ID); val ni = it.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME); if (ii >= 0 && ni >= 0 && it.moveToFirst()) list.add(Contact(it.getString(ii)?:"", it.getString(ni)?:"?")) }; contacts = list; step = 24 } catch (t: Throwable) { err = t.message }
+                }) { Text("Step 2c: Read 1st contact") } }
+            24 -> { Text("Step 2c: 1 contact read (${contacts.size})", style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(8.dp))
+                Button(onClick = {
+                    try { contacts = loadContacts(ctx); step = 25 } catch (t: Throwable) { err = t.message }
+                }) { Text("Step 2d: Read all contacts") } }
             25 -> if (err != null) {
                 Box(Modifier.fillMaxSize()) { Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Error", color = MaterialTheme.colorScheme.error); Spacer(Modifier.height(8.dp))
@@ -132,8 +137,7 @@ data class Contact(val id: String, val name: String, val phone: String = "")
     Box(Modifier.fillMaxSize().padding(32.dp)) { Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(title, style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(8.dp))
         Text(desc, style = MaterialTheme.typography.bodySmall, color = Color.Gray); Spacer(Modifier.height(24.dp))
-        CircularProgressIndicator(); Spacer(Modifier.height(8.dp)); Text("Running...")
-    }}
+    }
 }
 
 private fun loadContacts(ctx: android.content.Context): List<Contact> {
