@@ -116,7 +116,9 @@ class MainActivity : ComponentActivity() {
 
 data class Contact(
     val id: String, val name: String, val phones: List<String> = emptyList(), val emails: List<String> = emptyList(),
-    val org: String = "", val addr: String = "", val note: String = "", val photo: ByteArray? = null
+    val org: String = "", val addr: String = "", val note: String = "", val photo: ByteArray? = null,
+    val phoneTypes: Map<String, String> = emptyMap() // phone -> icon label
+)
 )
 
 @Composable fun ContactsPage(ctx: android.content.Context, onBack: () -> Unit, reload: () -> Unit) {
@@ -187,7 +189,10 @@ data class Contact(
                                 }
                                 Text(c.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
                             }
-                            c.phones.forEach { p -> Text("📞 $p", style = MaterialTheme.typography.bodySmall) }
+                            c.phones.forEach { p ->
+                                val icon = c.phoneTypes[p] ?: "📞"
+                                Text("$icon $p", style = MaterialTheme.typography.bodySmall)
+                            }
                             c.emails.forEach { e -> Text("✉ $e", style = MaterialTheme.typography.bodySmall) }
                             if (c.org.isNotBlank()) Text("🏢 ${c.org}", style = MaterialTheme.typography.bodySmall)
                             if (c.addr.isNotBlank()) Text("📍 ${c.addr}", style = MaterialTheme.typography.bodySmall)
@@ -221,11 +226,30 @@ private fun loadContactsWithPhones(ctx: android.content.Context): List<Contact> 
     c.use { cur ->
         val idIdx = cur.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
         val phIdx = cur.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+        val typeIdx = cur.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.TYPE)
+        val labelIdx = cur.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.LABEL)
         if (idIdx < 0 || phIdx < 0) return@use
+        val typeMap = mapOf(
+            android.provider.ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE to "📱",
+            android.provider.ContactsContract.CommonDataKinds.Phone.TYPE_HOME to "🏠",
+            android.provider.ContactsContract.CommonDataKinds.Phone.TYPE_WORK to "💼",
+            android.provider.ContactsContract.CommonDataKinds.Phone.TYPE_FAX_WORK to "📠",
+        )
         while (cur.moveToNext()) {
             val cid = cur.getString(idIdx) ?: continue
             val contact = idx[cid] ?: continue
-            val phone = cur.getString(phIdx) ?: ""; if (phone.isNotBlank()) idx[cid] = contact.copy(phones = contact.phones + phone)
+            val phone = cur.getString(phIdx) ?: ""; if (phone.isBlank()) continue
+            val type = if (typeIdx >= 0) cur.getInt(typeIdx) else 0
+            val label = if (labelIdx >= 0) cur.getString(labelIdx) ?: "" else ""
+            val icon = when {
+                label.contains("WhatsApp", ignoreCase = true) || label.contains("Whats App", ignoreCase = true) -> "💬"
+                label.contains("Telegram", ignoreCase = true) -> "✈"
+                label.contains("Signal", ignoreCase = true) -> "🔒"
+                label.contains("Viber", ignoreCase = true) -> "📲"
+                else -> typeMap[type] ?: "📞"
+            }
+            val newTypes = contact.phoneTypes + (phone to icon)
+            idx[cid] = contact.copy(phones = contact.phones + phone, phoneTypes = newTypes)
         }
     }
     return idx.values.toList()
