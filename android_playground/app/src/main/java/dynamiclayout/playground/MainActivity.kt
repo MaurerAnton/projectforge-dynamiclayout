@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -12,183 +13,154 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// ── Main Activity ──
+// ── MainActivity ──
 
 class MainActivity : ComponentActivity() {
-
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { _ -> /* ViewModel handles result */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             MaterialTheme {
-                PlaygroundScreen()
+                ContactsApp()
             }
-        }
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
         }
     }
 }
 
-// ── ViewModel ──
-
-class PlaygroundViewModel(app: android.app.Application) : AndroidViewModel(app) {
-    var contacts by mutableStateOf<List<Contact>>(emptyList())
-        private set
-    var filter by mutableStateOf("")
-        private set
-    var spec by mutableStateOf<Map<String, Any>>(emptyMap())
-        private set
-    var data by mutableStateOf<Map<String, Any>>(emptyMap())
-        private set
-    var isLoading by mutableStateOf(false)
-        private set
-    var error by mutableStateOf<String?>(null)
-        private set
-
-    init {
-        // Don't auto-load — wait for activity to trigger
-    }
-
-    fun loadContacts() {
-        isLoading = true
-        error = null
-        viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    ContactsLoader.load(getApplication<android.app.Application>(), filter)
-                }
-                contacts = result
-                regenerate()
-                isLoading = false
-            } catch (e: Exception) {
-                error = e.message ?: "Failed to load contacts"
-                isLoading = false
-            }
-        }
-    }
-
-    fun onFilterChange(newFilter: String) {
-        filter = newFilter
-        val filtered = if (newFilter.isBlank()) contacts
-        else contacts.filter { it.name.contains(newFilter, ignoreCase = true) }
-        val generated = ContactToJson.generate(filtered, newFilter)
-        spec = generated["ui"] as Map<String, Any>
-        data = generated["data"] as Map<String, Any>
-    }
-
-    private fun regenerate() {
-        val generated = ContactToJson.generate(contacts, filter)
-        spec = generated["ui"] as Map<String, Any>
-        data = generated["data"] as Map<String, Any>
-    }
-}
-
-// ── Playground Screen ──
+// ── App composable ──
 
 @Composable
-fun PlaygroundScreen(vm: PlaygroundViewModel = viewModel()) {
-    LaunchedEffect(Unit) {
-        if (vm.spec.isEmpty()) vm.loadContacts()
+fun ContactsApp() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS)
+                == PackageManager.PERMISSION_GRANTED
+        )
     }
 
-    Surface(modifier = Modifier.fillMaxSize()) {
-        when {
-            vm.isLoading -> Box(Modifier.fillMaxSize()) {
-                Column(Modifier.align(androidx.compose.ui.Alignment.Center),
-                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(8.dp))
-                    Text("Loading contacts...")
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasPermission = granted
+        if (granted) loadKey++  // trigger reload
+    }
+
+    if (!hasPermission) {
+        Box(Modifier.fillMaxSize()) {
+            Column(Modifier.align(Alignment.Center).padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("DynamicLayout Contacts Demo", style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(16.dp))
+                Text("This app renders your phone contacts using the DynamicLayout engine.\n\nGrant permission to continue.",
+                    style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(24.dp))
+                Button(onClick = { permissionLauncher.launch(Manifest.permission.READ_CONTACTS) }) {
+                    Text("Grant Contacts Permission")
                 }
             }
-            vm.error != null -> Box(Modifier.fillMaxSize()) {
-                Column(Modifier.align(androidx.compose.ui.Alignment.Center).padding(32.dp),
-                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-                ) {
-                    Text("Error loading contacts", color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(8.dp))
-                    Text(vm.error ?: "", style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = { vm.loadContacts() }) { Text("Retry") }
-                }
-            }
-            vm.spec.isEmpty() -> Box(Modifier.fillMaxSize()) {
-                CircularProgressIndicator(Modifier.align(androidx.compose.ui.Alignment.Center))
-            }
-            else -> DynamicLayout(
-                spec = vm.spec,
-                data = vm.data,
-                onUpdate = { updated ->
-                    val searchVal = updated["search"] as? String ?: ""
-                    if (searchVal != vm.filter) {
-                        vm.onFilterChange(searchVal)
-                    }
-                },
-                onAction = { id, _ ->
-                    when (id) {
-                        "refresh" -> vm.loadContacts()
-                    }
-                }
-            )
         }
+    } else {
+        var loadKey by remember { mutableIntStateOf(0) }
+        ContactsView(context, loadKey, onReload = { loadKey++ })
     }
 }
 
-// ── DynamicLayout Compose Renderer ──
+// ── Contacts loader + renderer ──
 
 @Composable
-fun DynamicLayout(
-    spec: Map<String, Any?>,
-    data: Map<String, Any?>,
-    modifier: Modifier = Modifier,
-    onUpdate: ((Map<String, Any?>) -> Unit)? = null,
-    onAction: ((String, Map<String, Any?>?) -> Unit)? = null
-) {
-    val state = remember { mutableStateMapOf<String, Any?>() }
-    LaunchedEffect(data) { state.clear(); data.forEach { (k, v) -> state[k] = v } }
+fun ContactsView(context: android.content.Context, loadKey: Int = 0, onReload: () -> Unit = {}) {
+    var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
+    var filter by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(loadKey) {
+        try {
+            val result = withContext(Dispatchers.IO) {
+                ContactsLoader.load(context, "")
+            }
+            contacts = result
+            isLoading = false
+        } catch (e: Exception) {
+            errorMsg = e.message ?: "Failed"
+            isLoading = false
+        }
+    }
+
+    if (isLoading) {
+        Box(Modifier.fillMaxSize()) {
+            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator()
+                Spacer(Modifier.height(8.dp))
+                Text("Loading contacts...")
+            }
+        }
+        return
+    }
+
+    if (errorMsg != null) {
+        Box(Modifier.fillMaxSize()) {
+            Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Error", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(8.dp))
+                Text(errorMsg ?: "")
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = { isLoading = true; errorMsg = null; onReload() }) { Text("Retry") }
+            }
+        }
+        return
+    }
+
+    // Generate JSON from contacts
+    val filtered = remember(filter, contacts) {
+        if (filter.isBlank()) contacts
+        else contacts.filter { it.name.contains(filter, ignoreCase = true) }
+    }
+
+    val spec = remember(filtered) { ContactToJson.generate(filtered, filter) }
+    val uiSpec = spec["ui"] as? Map<String, Any?> ?: error("Bad spec")
+    val uiData = spec["data"] as? Map<String, Any?> ?: emptyMap()
+
+    val stateData = remember { mutableStateMapOf<String, Any?>() }
+    LaunchedEffect(uiData) { stateData.clear(); uiData.forEach { (k, v) -> stateData[k] = v } }
 
     Column(
-        modifier = modifier
+        Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        spec["title"]?.let {
+        uiSpec["title"]?.let {
             Text(it.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
         }
 
-        (spec["layout"] as? List<*>)?.forEach { el ->
-            RenderEl((el as? Map<String, Any?>) ?: emptyMap(), state, onUpdate, onAction)
+        (uiSpec["layout"] as? List<*>)?.forEach { el ->
+            RenderEl((el as? Map<String, Any?>) ?: emptyMap(), stateData) { updated ->
+                val s = updated["search"] as? String ?: ""
+                if (s != filter) filter = s
+            }
         }
 
-        val actions = spec["actions"] as? List<*>
+        val actions = uiSpec["actions"] as? List<*>
         if (!actions.isNullOrEmpty()) {
             Divider(modifier = Modifier.padding(vertical = 12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 actions.forEach { el ->
-                    RenderEl((el as? Map<String, Any?>) ?: emptyMap(), state, onUpdate, onAction)
+                    RenderEl((el as? Map<String, Any?>) ?: emptyMap(), stateData, onAction = { id, _ ->
+                        // Handle action
+                    })
                 }
             }
         }
@@ -199,8 +171,8 @@ fun DynamicLayout(
 fun RenderEl(
     el: Map<String, Any?>,
     data: MutableMap<String, Any?>,
-    onUpdate: ((Map<String, Any?>) -> Unit)?,
-    onAction: ((String, Map<String, Any?>?) -> Unit)?
+    onUpdate: ((Map<String, Any?>) -> Unit)? = null,
+    onAction: ((String, Map<String, Any?>?) -> Unit)? = null
 ) {
     val t = el["type"]?.toString() ?: ""
 
@@ -223,10 +195,7 @@ fun RenderEl(
             }
         }
         "LABEL" -> Text(el["label"]?.toString() ?: "", modifier = Modifier.padding(bottom = 4.dp), fontWeight = FontWeight.Medium)
-        "ALERT" -> {
-            val bg = mapOf("info" to Color(0xFFE0F0FF), "warning" to Color(0xFFFFF3CD), "danger" to Color(0xFFFFE0E0))
-            Text(el["message"]?.toString() ?: "", Modifier.fillMaxWidth().padding(12.dp), color = Color(0xFF333333))
-        }
+        "ALERT" -> Text(el["message"]?.toString() ?: "", Modifier.fillMaxWidth().padding(12.dp), color = Color(0xFF333333))
         "BADGE" -> {
             val c = mapOf("primary" to Color(0xFF0D6EFD), "secondary" to Color(0xFF6C757D), "success" to Color(0xFF198754))
             Surface(color = c[el["color"]?.toString()] ?: Color.Gray, shape = MaterialTheme.shapes.small) {
@@ -241,14 +210,13 @@ fun RenderEl(
             OutlinedTextField(
                 value = text, onValueChange = { text = it; data[id] = it; onUpdate?.invoke(mapOf(id to it)) },
                 label = { Text(el["label"]?.toString() ?: "") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                singleLine = true, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             )
         }
         "CHECKBOX" -> {
             val id = el["id"]?.toString() ?: ""
             var ck by remember { mutableStateOf(data[id] == true) }
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(ck, { ck = it; data[id] = it; onUpdate?.invoke(mapOf(id to it)) })
                 Text(el["label"]?.toString() ?: "")
             }
@@ -267,9 +235,7 @@ fun RenderEl(
             Button(
                 onClick = { onAction?.invoke(el["id"]?.toString() ?: "", el["responseAction"] as? Map<String, Any?>) },
                 colors = ButtonDefaults.buttonColors(containerColor = c[el["color"]?.toString()] ?: MaterialTheme.colorScheme.primary)
-            ) {
-                Text(el["title"]?.toString() ?: el["id"]?.toString() ?: "")
-            }
+            ) { Text(el["title"]?.toString() ?: el["id"]?.toString() ?: "") }
         }
         else -> Text("Unknown: $t", color = Color.Red)
     }
