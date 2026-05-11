@@ -1,4 +1,4 @@
-name: Build DynamicLayout Core
+name: Build DynamicLayout
 
 on:
   push:
@@ -140,3 +140,36 @@ jobs:
         with:
           name: dynamiclayout-react
           path: react/dist/
+
+  build-android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android_playground
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34 build-tools;34.0.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build debug APK
+        run: gradle assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamiclayout-playground-apk
+          path: android_playground/app/build/outputs/apk/debug/*.apk
