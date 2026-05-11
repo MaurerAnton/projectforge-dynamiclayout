@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
 // ── Contacts page (step by step) ──
 
 data class Contact(
-    val id: String, val name: String, val phone: String = "", val email: String = "",
+    val id: String, val name: String, val phones: List<String> = emptyList(), val emails: List<String> = emptyList(),
     val org: String = "", val addr: String = "", val note: String = "", val photo: ByteArray? = null
 )
 
@@ -142,7 +142,7 @@ data class Contact(
                 Spacer(Modifier.height(4.dp))
                 Button(onClick = { try { val list = loadContactsBasic(ctx); contacts = list; dbg = "OK names: ${list.size}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Load names only") }
                 Spacer(Modifier.height(4.dp))
-                Button(onClick = { try { val list = loadContactsFull(ctx); contacts = list; dbg = "OK full: ${list.size} contacts, p=${list.count{it.phone.isNotBlank()}} e=${list.count{it.email.isNotBlank()}}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Load all fields") }
+                Button(onClick = { try { val list = loadContactsFull(ctx); contacts = list; dbg = "OK full: ${list.size} contacts, phones=${list.sumOf{it.phones.size}} emails=${list.sumOf{it.emails.size}}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Load all fields") }
                 Spacer(Modifier.height(16.dp))
                 OutlinedButton(onClick = onBack) { Text("Back") }
             }}
@@ -187,8 +187,8 @@ data class Contact(
                                 }
                                 Text(c.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
                             }
-                            if (c.phone.isNotBlank()) Text("📞 ${c.phone}", style = MaterialTheme.typography.bodySmall)
-                            if (c.email.isNotBlank()) Text("✉ ${c.email}", style = MaterialTheme.typography.bodySmall)
+                            c.phones.forEach { p -> Text("📞 $p", style = MaterialTheme.typography.bodySmall) }
+                            c.emails.forEach { e -> Text("✉ $e", style = MaterialTheme.typography.bodySmall) }
                             if (c.org.isNotBlank()) Text("🏢 ${c.org}", style = MaterialTheme.typography.bodySmall)
                             if (c.addr.isNotBlank()) Text("📍 ${c.addr}", style = MaterialTheme.typography.bodySmall)
                             if (c.note.isNotBlank()) Text("📝 ${c.note}", style = MaterialTheme.typography.bodySmall)
@@ -225,7 +225,7 @@ private fun loadContactsWithPhones(ctx: android.content.Context): List<Contact> 
         while (cur.moveToNext()) {
             val cid = cur.getString(idIdx) ?: continue
             val contact = idx[cid] ?: continue
-            if (contact.phone.isBlank()) idx[cid] = contact.copy(phone = cur.getString(phIdx) ?: "")
+            val phone = cur.getString(phIdx) ?: ""; if (phone.isNotBlank()) idx[cid] = contact.copy(phones = contact.phones + phone)
         }
     }
     return idx.values.toList()
@@ -242,7 +242,7 @@ private fun loadContactsWithEmails(ctx: android.content.Context): List<Contact> 
         while (cur.moveToNext()) {
             val cid = cur.getString(idIdx) ?: continue
             val contact = idx[cid] ?: continue
-            if (contact.email.isBlank()) idx[cid] = contact.copy(email = cur.getString(emIdx) ?: "")
+            val email = cur.getString(emIdx) ?: ""; if (email.isNotBlank()) idx[cid] = contact.copy(emails = contact.emails + email)
         }
     }
     return idx.values.toList()
