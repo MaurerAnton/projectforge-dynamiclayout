@@ -245,12 +245,6 @@ private fun loadContactsFull(ctx: android.content.Context): List<Contact> {
         val addrIdx = cur.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS)
         if (idIdx >= 0 && addrIdx >= 0) while (cur.moveToNext()) { val cid = cur.getString(idIdx) ?: continue; idx[cid]?.let { c -> if (c.addr.isBlank()) idx[cid] = c.copy(addr = cur.getString(addrIdx) ?: "") } }
     }
-    // Website
-    ctx.contentResolver.query(android.provider.ContactsContract.CommonDataKinds.Website.CONTENT_URI, null, null, null, null)?.use { cur ->
-        val idIdx = cur.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Website.CONTACT_ID)
-        val urlIdx = cur.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Website.URL)
-        if (idIdx >= 0 && urlIdx >= 0) while (cur.moveToNext()) { val cid = cur.getString(idIdx) ?: continue; idx[cid]?.let { c -> if (c.website.isBlank()) idx[cid] = c.copy(website = cur.getString(urlIdx) ?: "") } }
-    }
     return idx.values.toList()
 }
 
