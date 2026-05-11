@@ -173,21 +173,22 @@ fun RenderEl(
 ) {
     val t = el["type"]?.toString() ?: ""
 
-    fun children() {
+    @Composable
+    fun Children() {
         (el["content"] as? List<*>)?.forEach {
             RenderEl((it as? Map<String, Any?>) ?: emptyMap(), data, onUpdate, onAction)
         }
     }
 
     when (t) {
-        "ROW" -> Row(Modifier.fillMaxWidth()) { children() }
-        "COL" -> Column { children() }
-        "GROUP" -> Column { children() }
-        "INLINE_GROUP" -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { children() }
+        "ROW" -> Row(Modifier.fillMaxWidth()) { Children() }
+        "COL" -> Column { Children() }
+        "GROUP" -> Column { Children() }
+        "INLINE_GROUP" -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Children() }
         "FIELDSET" -> Card(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
             Column(Modifier.padding(12.dp)) {
                 el["title"]?.let { Text(it.toString(), fontWeight = FontWeight.SemiBold) }
-                children()
+                Children()
             }
         }
         "LABEL" -> Text(el["label"]?.toString() ?: "", modifier = Modifier.padding(bottom = 4.dp), fontWeight = FontWeight.Medium)
