@@ -5,12 +5,18 @@
 [![CI](https://github.com/MaurerAnton/projectforge-dynamiclayout/actions/workflows/build.yml/badge.svg)](https://github.com/MaurerAnton/projectforge-dynamiclayout/actions)
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Playground](https://img.shields.io/badge/Playground-try%20it%20online-brightgreen)](https://maureranton.github.io/projectforge-dynamiclayout/playground/)
+[![Mobile](https://img.shields.io/badge/Mobile-Flutter%20app-blue)](mobile_playground/)
 
-**Server-Driven UI Engine.** Kotlin DSL → JSON → React / Native.
+## About
+
+The code, core architecture, and initial design of the DynamicLayout engine originate from the **[ProjectForge](https://www.projectforge.org/)** project by **[Micromata GmbH](https://www.micromata.com/)** (Copyright 2001–2026). The original engine was built by **Fin Reinhard** (React) and **Kai Reinhard** (Kotlin) starting in March 2019 as a server‑driven UI system for the ProjectForge enterprise platform.
+
+This project continues developing the engine's strengths — **language‑agnostic JSON format**, **zero‑dependency SDKs**, **framework‑agnostic rendering** — with the goal of making DynamicLayout **convenient and accessible to any programmer**, regardless of their preferred language or platform.
+
+**Server-Driven UI Engine.** 42 languages → JSON → 12 client frameworks.
 
 ```
-UILayout + UIRow + UIInput + UIButton  →  JSON  →  <DynamicLayout />
-          (backend)                         (React)
+42 language SDKs → identical JSON → React / Vue / Svelte / Flutter / SwiftUI / Compose / ...
 ```
 
 ---
@@ -117,38 +123,35 @@ function App() {
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  backend (Kotlin Multiplatform)                             │
-│  UILayout + UIRow + UICol + UIInput + UIButton + ...        │
-│         │                                                   │
-│         ▼                                                   │
-│  DynamicLayoutJson.encode(layout)                           │
-│         │                                                   │
-│         ▼                                                   │
-│  JSON: { "title": "...", "layout": [...], "actions": [...] }│
-└─────────────────────────────────────────────────────────────┘
-         │  HTTP GET /api/page
+┌──────────────────────────────────────────────────────────────────┐
+│  Server SDKs — 42 languages                                       │
+│  Kotlin DSL / C89 / Go / Python / Rust / Java / Swift / Zig / ...│
+│         │                                                        │
+│         ▼                                                        │
+│  Identical JSON: { "title": "...", "layout": [...], "actions": [...] }│
+└──────────────────────────────────────────────────────────────────┘
+         │  HTTP or embedded
          ▼
-┌─────────────────────────────────────────────────────────────┐
-│  frontend (React)                                           │
-│  <DynamicLayout ui={json} data={...} />                     │
-│         │                                                   │
-│         ▼                                                   │
-│  DynamicRenderer → components[type](props)                  │
-│         │                                                   │
-│         ▼                                                   │
-│  <DynamicFieldset> → <DynamicInput> → <DynamicButton>       │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  Client Renderers — 12 frameworks                                │
+│  React / Vue / Svelte / Angular / SolidJS / Web Components / ...│
+│  Flutter / SwiftUI / Jetpack Compose / React Native / Qt / HTMX  │
+│         │                                                        │
+│         ▼                                                        │
+│  Component Registry: type → component → native widget            │
+└──────────────────────────────────────────────────────────────────┘
 ```
-
----
 
 ## Modules
 
-| Module | Platform | Description | Files | Lines |
-|--------|-----------|----------|:-----:|:-----:|
-| **core** | JVM + Native + JS | UI DSL (UIRow, UIInput, UIButton...) | 52 .kt | ~1000 |
-| react | JS | DynamicRenderer | 21 .jsx | ~650 |
+| Module | Description |
+|--------|-------------|
+| 42 server SDKs | Generate DynamicLayout JSON from any language (see repo root: `dynamiclayout.*`) |
+| 12 client renderers | Render PFDL JSON in any framework (see repo root: `dynamiclayout-*.vue`, `*.svelte`, `*.swiftui`, ...) |
+| `playground/` | Web playground — paste JSON, see live preview with Kotlin/C/JS source views |
+| `mobile_playground/` | Flutter mobile playground — test layouts on iOS/Android |
+| `docs/` | Full engine documentation (architecture, API reference, comparison, schema) |
+| `examples/` | JSON layout examples, C/C++/Go code examples |
 
 ---
 
@@ -188,24 +191,39 @@ Supported architectures:
 
 ## Examples
 
-Example JSON layouts that demonstrate what DynamicLayout can render:
+| Type | Link | Description |
+|------|------|-------------|
+| **JSON layouts** | [examples/](examples/) | Demo JSON files (about, feedback, registration, all‑components) |
+| **Go code** | [examples/go/](examples/go/) | 5 scenarios: about, form, registration, device, aggrid |
+| **C/C++ code** | [examples/cpp/](examples/cpp/) | C99 and C++ examples |
+| **Web playground** | [playground/](playground/) | Interactive JSON editor + live preview + Kotlin/C/JS source views |
+| **Mobile playground** | [mobile_playground/](mobile_playground/) | Flutter app — test layouts on iOS/Android |
 
-| File | Description | Components used |
-|------|-------------|-----------------|
-| [examples/about-layout.json](examples/about-layout.json) | Static info page | FIELDSET, LABEL |
-| [examples/feedback-form.json](examples/feedback-form.json) | Contact form with two-column layout | ROW, COL, INPUT, TEXTAREA, BUTTON |
-| [examples/registration-form.json](examples/registration-form.json) | Complex form with select, checkbox, collapsible fieldset | ROW, COL, FIELDSET, INPUT, SELECT, CHECKBOX, TEXTAREA, BUTTON |
+## Playgrounds
 
-To preview any example:
-1. Copy the JSON into a DynamicLayout React component
-2. Or serve it via the demo server (`dynamiclayout-demo/`)
+### Web
 
-```jsx
-import { DynamicLayout } from '@dynamiclayout/react';
-
-const json = { /* paste any example JSON here */ };
-<DynamicLayout ui={json.ui} data={{}} />;
 ```
+open playground/index.html   # or serve via any HTTP server
+```
+
+The web playground lets you:
+- Paste PFDL JSON and see it render instantly
+- Switch between JSON / Kotlin / C / JavaScript source views
+- Load 4 preset layouts (About, Feedback, Registration, All Components)
+- Edit JSON live and see errors highlighted
+
+### Mobile
+
+```
+cd mobile_playground && flutter run
+```
+
+The Flutter mobile playground provides:
+- 3‑tab UI: Preview | JSON Editor | Presets
+- Live rendering with the Flutter DynamicLayout widget
+- Dark/light theme
+- All presets work offline
 
 ---
 
@@ -223,12 +241,12 @@ const json = { /* paste any example JSON here */ };
 
 ## Further reading
 
-| File | About |
-|------|-------|
-| [GETTING_STARTED.md](GETTING_STARTED.md) | Full tutorial from scratch |
-| [playground/](playground/) | Interactive playground — paste JSON, see live preview |
-| [Real-world components](docs/projectforge-sdui-engine-docs/real-world-components.md) | 29 React components with full source code |
-| [core/tests/src/Tests.kt](core/tests/src/Tests.kt) | 11 tests as a starting point |
-| [dynamiclayout-schema.json](dynamiclayout-schema.json) | JSON Schema |
-| [docs/](docs/) | Full engine documentation |
-| [ROADMAP](docs/projectforge-sdui-engine-docs/ROADMAP.md) | Planned features and priorities |
+| Document | About |
+|----------|-------|
+| [architecture.md](docs/projectforge-sdui-engine-docs/architecture.md) | Full architecture — 42 SDKs, 12 renderers, data flow |
+| [comparison.md](docs/projectforge-sdui-engine-docs/comparison.md) | Detailed comparison with RJSF, Formily, AdminJS, Causeway, DivKit |
+| [api-reference.md](docs/projectforge-sdui-engine-docs/api-reference.md) | Complete UI component reference (1157 lines) |
+| [json-schema.md](docs/projectforge-sdui-engine-docs/json-schema.md) | JSON Schema + validation examples (JS, Python, Go, Kotlin) |
+| [history.md](docs/projectforge-sdui-engine-docs/history.md) | Engine history — from March 2019 to 2026 |
+| [dynamiclayout-schema.json](dynamiclayout-schema.json) | Formal JSON Schema (Draft 2020-12) |
+| [ROADMAP.md](docs/projectforge-sdui-engine-docs/ROADMAP.md) | Planned features |
