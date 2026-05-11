@@ -181,7 +181,7 @@ fun RenderEl(
 
     when (t) {
         "ROW" -> Row(Modifier.fillMaxWidth()) { children() }
-        "COL" -> Column(Modifier.weight(1f)) { children() }
+        "COL" -> Column { children() }
         "GROUP" -> Column { children() }
         "INLINE_GROUP" -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { children() }
         "FIELDSET" -> Card(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
