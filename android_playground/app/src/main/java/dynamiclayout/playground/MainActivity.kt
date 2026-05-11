@@ -128,23 +128,23 @@ data class Contact(val id: String, val name: String, val phone: String = "")
     }
 
     when (step) {
-        1 -> { // Step 1: hardcoded test
-            Box(Modifier.fillMaxSize().padding(32.dp)) {
-                Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Step 1: Render test", style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(16.dp))
-                    Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text("Test Contact", fontWeight = FontWeight.SemiBold)
-                            Text("Phone: +1 234 567 890", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            Text("Email: test@example.com", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                        }
-                    }
-                    Spacer(Modifier.height(24.dp))
-                    Button(onClick = { step = 2 }) { Text("Step 2: Load real contacts") }
-                    OutlinedButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) { Text("Back") }
-                }
-            }
+        1 -> {
+            var dbg by remember { mutableStateOf("") }
+            Box(Modifier.fillMaxSize().padding(16.dp)) { Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Step 1: Render test", style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(8.dp))
+                Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) { Column(Modifier.padding(12.dp)) { Text("Test Contact", fontWeight = FontWeight.SemiBold); Text("Phone: +1 234 567", style = MaterialTheme.typography.bodySmall, color = Color.Gray) } }
+                if (dbg.isNotBlank()) { Text(dbg, color = if (dbg.startsWith("OK")) Color(0xFF198754) else MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = { try { val l = emptyList<Contact>(); dbg = "OK emptyList: ${l.size}" } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Test emptyList") }
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = { try { val c = ctx.contentResolver.query(android.provider.ContactsContract.Contacts.CONTENT_URI, null, null, null, null); c?.close(); dbg = "OK query+close: cursor=${c != null}" } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Test query()+close()") }
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = { try { val c = ctx.contentResolver.query(android.provider.ContactsContract.Contacts.CONTENT_URI, null, null, null, null); val list = mutableListOf<Contact>(); c?.use { val ii = it.getColumnIndex(android.provider.ContactsContract.Contacts._ID); val ni = it.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME); if (ii >= 0 && ni >= 0 && it.moveToFirst()) list.add(Contact(it.getString(ii)?:"", it.getString(ni)?:"?")) }; dbg = "OK read 1: ${list.size}" } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Test read 1st contact") }
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = { try { val list = loadContacts(ctx); contacts = list; dbg = "OK read all: ${list.size}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Test read all + show") }
+                Spacer(Modifier.height(16.dp))
+                OutlinedButton(onClick = onBack) { Text("Back") }
+            }}
         }
         2 -> { // Step 2: loading
             Box(Modifier.fillMaxSize()) {
