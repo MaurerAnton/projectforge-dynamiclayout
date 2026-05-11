@@ -173,10 +173,10 @@ data class Contact(
                         Column(Modifier.padding(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (c.photo != null) {
-                                    try {
-                                        val bmp = remember(c.photo) { BitmapFactory.decodeByteArray(c.photo, 0, c.photo!!.size) }
-                                        if (bmp != null) { Image(bitmap = bmp.asImageBitmap(), contentDescription = null, modifier = Modifier.size(40.dp).clip(CircleShape)); Spacer(Modifier.width(8.dp)) }
-                                    } catch (_: Exception) {}
+                                    val bmp: android.graphics.Bitmap? = remember(c.photo) {
+                                        try { BitmapFactory.decodeByteArray(c.photo, 0, c.photo!!.size) } catch (_: Exception) { null }
+                                    }
+                                    if (bmp != null) { Image(bitmap = bmp.asImageBitmap(), contentDescription = null, modifier = Modifier.size(40.dp).clip(CircleShape)); Spacer(Modifier.width(8.dp)) }
                                 }
                                 Text(c.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
                             }
