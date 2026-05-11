@@ -66,7 +66,7 @@ class PlaygroundViewModel(app: android.app.Application) : AndroidViewModel(app) 
         private set
 
     init {
-        loadContacts()
+        // Don't auto-load — wait for activity to trigger
     }
 
     fun loadContacts() {
@@ -75,7 +75,7 @@ class PlaygroundViewModel(app: android.app.Application) : AndroidViewModel(app) 
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    ContactsLoader.load(getApplication(), filter)
+                    ContactsLoader.load(getApplication<android.app.Application>(), filter)
                 }
                 contacts = result
                 regenerate()
@@ -107,6 +107,10 @@ class PlaygroundViewModel(app: android.app.Application) : AndroidViewModel(app) 
 
 @Composable
 fun PlaygroundScreen(vm: PlaygroundViewModel = viewModel()) {
+    LaunchedEffect(Unit) {
+        if (vm.spec.isEmpty()) vm.loadContacts()
+    }
+
     Surface(modifier = Modifier.fillMaxSize()) {
         when {
             vm.isLoading -> Box(Modifier.fillMaxSize()) {
