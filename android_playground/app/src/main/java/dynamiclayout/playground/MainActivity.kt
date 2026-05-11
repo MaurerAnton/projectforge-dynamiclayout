@@ -63,11 +63,15 @@ fun ContactsApp() {
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("DynamicLayout Contacts Demo", style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(16.dp))
-                Text("This app renders your phone contacts using the DynamicLayout engine.\n\nGrant permission to continue.",
+                Text("Renders your phone contacts using the DynamicLayout engine.",
                     style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(24.dp))
                 Button(onClick = { permissionLauncher.launch(Manifest.permission.READ_CONTACTS) }) {
                     Text("Grant Contacts Permission")
+                }
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(onClick = { hasPermission = true; reloadKey++ }) {
+                    Text("Skip — Show Demo Layout")
                 }
             }
         }
@@ -84,28 +88,19 @@ fun ContactsView(context: android.content.Context, loadKey: Int = 0, onReload: (
     var filter by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+    var useDemo by remember { mutableStateOf(false) }
 
     LaunchedEffect(loadKey) {
-        isLoading = true
-        errorMsg = null
+        isLoading = true; errorMsg = null
         try {
-            val result = withContext(Dispatchers.IO) {
-                android.util.Log.d("DL", "ContactsLoader starting, context=$context")
-                val list = ContactsLoader.load(context, "")
-                android.util.Log.d("DL", "ContactsLoader done: ${list.size} contacts")
-                list
-            }
+            val result = withContext(Dispatchers.IO) { ContactsLoader.load(context, "") }
             contacts = result
-            isLoading = false
-        } catch (e: SecurityException) {
-            android.util.Log.e("DL", "Security exception loading contacts", e)
-            errorMsg = "Permission denied. Please grant contacts access in Settings."
-            isLoading = false
-        } catch (e: Exception) {
-            android.util.Log.e("DL", "Error loading contacts", e)
-            errorMsg = "${e.javaClass.simpleName}: ${e.message}"
-            isLoading = false
+            if (result.isEmpty()) useDemo = true
+        } catch (t: Throwable) {
+            errorMsg = "${t.javaClass.simpleName}: ${t.message}"
+            useDemo = true
         }
+        isLoading = false
     }
 
     if (isLoading) {
@@ -132,21 +127,14 @@ fun ContactsView(context: android.content.Context, loadKey: Int = 0, onReload: (
         return
     }
 
-    // Generate JSON from contacts
+    // Generate JSON from contacts (or fallback to demo)
     val filtered = remember(filter, contacts) {
         if (filter.isBlank()) contacts
         else contacts.filter { it.name.contains(filter, ignoreCase = true) }
     }
 
-    val spec = remember(filtered) {
-        try {
-            ContactToJson.generate(filtered, filter)
-        } catch (e: Exception) {
-            android.util.Log.e("DL", "JSON generation error", e)
-            mapOf("ui" to mapOf("title" to "Error generating JSON", "layout" to listOf(
-                mapOf("type" to "ALERT", "key" to "err", "message" to "${e.message}", "color" to "danger")
-            )), "data" to emptyMap<String, Any>())
-        }
+    val spec = remember(filtered, useDemo) {
+        if (useDemo) DEMO_JSON else ContactToJson.generate(filtered, filter)
     }
     val uiSpec = spec["ui"] as? Map<String, Any?> ?: emptyMap()
     val uiData = spec["data"] as? Map<String, Any?> ?: emptyMap()
@@ -263,3 +251,44 @@ fun RenderEl(
         else -> Text("Unknown: $t", color = Color.Red)
     }
 }
+
+// ── Demo layout (used when contacts unavailable or loading fails) ──
+
+val DEMO_JSON = mapOf(
+    "ui" to mapOf(
+        "title" to "DynamicLayout Demo",
+        "uid" to "demo",
+        "layout" to listOf(
+            mapOf("type" to "ALERT", "key" to "a1", "message" to "This is a demo layout. Click 'Grant Permission' to see your real contacts.", "color" to "info"),
+            mapOf("type" to "FIELDSET", "key" to "fs1", "title" to "Inputs", "content" to listOf(
+                mapOf("type" to "INPUT", "key" to "i1", "id" to "name", "label" to "Your Name", "required" to true),
+                mapOf("type" to "INPUT", "key" to "i2", "id" to "email", "label" to "Email", "dataType" to "STRING"),
+                mapOf("type" to "INPUT", "key" to "i3", "id" to "password", "label" to "Password", "dataType" to "PASSWORD"),
+                mapOf("type" to "TEXTAREA", "key" to "t1", "id" to "notes", "label" to "Notes", "rows" to 3)
+            )),
+            mapOf("type" to "FIELDSET", "key" to "fs2", "title" to "Selection", "content" to listOf(
+                mapOf("type" to "CHECKBOX", "key" to "cb1", "id" to "agree", "label" to "I agree to terms"),
+                mapOf("type" to "SELECT", "key" to "s1", "id" to "country", "label" to "Country", "values" to listOf(
+                    mapOf("id" to "us", "displayName" to "USA"),
+                    mapOf("id" to "de", "displayName" to "Germany"),
+                    mapOf("id" to "jp", "displayName" to "Japan")
+                )),
+                mapOf("type" to "RATING", "key" to "rt1", "id" to "stars", "label" to "Rate this app")
+            )),
+            mapOf("type" to "FIELDSET", "key" to "fs3", "title" to "Display", "content" to listOf(
+                mapOf("type" to "LABEL", "key" to "l1", "label" to "This is a label"),
+                mapOf("type" to "BADGE", "key" to "bd1", "title" to "Primary Badge", "color" to "primary"),
+                mapOf("type" to "BADGE", "key" to "bd2", "title" to "Success", "color" to "success"),
+                mapOf("type" to "ALERT", "key" to "a2", "message" to "Everything is working", "color" to "success"),
+                mapOf("type" to "PROGRESS", "key" to "pr1", "progress" to 65, "color" to "primary")
+            ))
+        ),
+        "actions" to listOf(
+            mapOf("type" to "BUTTON", "key" to "b1", "id" to "save", "title" to "Save Demo", "color" to "primary"),
+            mapOf("type" to "BUTTON", "key" to "b2", "id" to "cancel", "title" to "Cancel", "color" to "secondary")
+        ),
+        "translations" to emptyMap<String, String>(),
+        "userAccess" to mapOf("cancel" to true)
+    ),
+    "data" to emptyMap<String, Any>()
+)
