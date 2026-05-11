@@ -140,12 +140,9 @@ data class Contact(
                 Spacer(Modifier.height(4.dp))
                 Button(onClick = { try { val c = ctx.contentResolver.query(android.provider.ContactsContract.Contacts.CONTENT_URI, null, null, null, null); val list = mutableListOf<Contact>(); c?.use { val ii = it.getColumnIndex(android.provider.ContactsContract.Contacts._ID); val ni = it.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME); if (ii >= 0 && ni >= 0 && it.moveToFirst()) list.add(Contact(it.getString(ii)?:"", it.getString(ni)?:"?")) }; dbg = "OK read 1: ${list.size}" } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Test read 1st contact") }
                 Spacer(Modifier.height(4.dp))
-                Button(onClick = { try { val list = loadContactsBasic(ctx); contacts = list; dbg = "OK read all: ${list.size}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Test read all + show") }
-                Spacer(Modifier.height(8.dp))
-                Text("Load with extras:", fontWeight = FontWeight.Medium); Spacer(Modifier.height(4.dp))
-                Button(onClick = { try { val list = loadContactsWithPhones(ctx); contacts = list; dbg = "OK phones: ${list.count{it.phone.isNotBlank()}}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Load + phones") }
-                Button(onClick = { try { val list = loadContactsWithEmails(ctx); contacts = list; dbg = "OK emails: ${list.count{it.email.isNotBlank()}}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Load + phones + emails") }
-                Button(onClick = { try { val list = loadContactsFull(ctx); contacts = list; dbg = "OK full: ${list.size}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Load + all fields") }
+                Button(onClick = { try { val list = loadContactsBasic(ctx); contacts = list; dbg = "OK names: ${list.size}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Load names only") }
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = { try { val list = loadContactsFull(ctx); contacts = list; dbg = "OK full: ${list.size} contacts, p=${list.count{it.phone.isNotBlank()}} e=${list.count{it.email.isNotBlank()}}"; if (list.isNotEmpty()) step = 3 } catch (t: Throwable) { dbg = "${t.javaClass.simpleName}: ${t.message}" } }) { Text("Load all fields") }
                 Spacer(Modifier.height(16.dp))
                 OutlinedButton(onClick = onBack) { Text("Back") }
             }}
@@ -174,19 +171,11 @@ data class Contact(
                 contacts.take(20).forEach { c ->
                     Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                         Column(Modifier.padding(12.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (c.photo != null) {
-                                    val bmp = remember(c.photo) { BitmapFactory.decodeByteArray(c.photo, 0, c.photo!!.size) }
-                                    if (bmp != null) Image(bitmap = bmp.asImageBitmap(), contentDescription = null,
-                                        modifier = Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape))
-                                    Spacer(Modifier.width(8.dp))
-                                }
-                                Text(c.name, fontWeight = FontWeight.SemiBold)
-                            }
-                            if (c.phone.isNotBlank()) Text("📞 ${c.phone}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            if (c.email.isNotBlank()) Text("✉ ${c.email}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            if (c.org.isNotBlank()) Text("🏢 ${c.org}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            if (c.addr.isNotBlank()) Text("📍 ${c.addr}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                            Text(c.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                            if (c.phone.isNotBlank()) Text("📞 ${c.phone}", style = MaterialTheme.typography.bodySmall)
+                            if (c.email.isNotBlank()) Text("✉ ${c.email}", style = MaterialTheme.typography.bodySmall)
+                            if (c.org.isNotBlank()) Text("🏢 ${c.org}", style = MaterialTheme.typography.bodySmall)
+                            if (c.addr.isNotBlank()) Text("📍 ${c.addr}", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
