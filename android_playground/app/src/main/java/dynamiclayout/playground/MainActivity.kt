@@ -84,24 +84,25 @@ fun ContactsApp() {
 
 @Composable
 fun ContactsView(context: android.content.Context, loadKey: Int = 0, onReload: () -> Unit = {}) {
-    var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
-    var filter by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMsg by remember { mutableStateOf<String?>(null) }
-    var useDemo by remember { mutableStateOf(false) }
-
-    LaunchedEffect(loadKey) {
-        isLoading = true; errorMsg = null
-        try {
-            val result = withContext(Dispatchers.IO) { ContactsLoader.load(context, "") }
-            contacts = result
-            if (result.isEmpty()) useDemo = true
-        } catch (t: Throwable) {
-            errorMsg = "${t.javaClass.simpleName}: ${t.message}"
-            useDemo = true
+    // STEP 1: minimal test — if this crashes, the issue is in build setup, not our code
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.align(Alignment.Center).padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("DynamicLayout Demo", style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(16.dp))
+            Text("If you see this, the app works.\nContacts rendering is disabled for debugging.",
+                style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(24.dp))
+            Button(onClick = onReload) { Text("Reload") }
         }
-        isLoading = false
     }
+    return
+
+    // Original code below — disabled for debugging
+    @Suppress("UNUSED_VARIABLE")
+    val _unused = Unit
+
+    var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
 
     if (isLoading) {
         Box(Modifier.fillMaxSize()) {
